@@ -29,10 +29,12 @@ function login($json) {
 
   $stmt = $conn->prepare(
     "SELECT u.user_id, u.username, u.first_name, u.last_name, u.password_hash,
+            u.assigned_terminal_id, t.terminal_name AS assigned_terminal_name,
             r.role_id, r.role_name
      FROM tblusers u
      INNER JOIN tblroles r ON u.role_id = r.role_id
-     WHERE LOWER(u.username) = LOWER(:username) AND u.is_active = 1"
+     LEFT JOIN tblpos_terminals t ON t.pos_terminal_id = u.assigned_terminal_id
+     WHERE LOWER(TRIM(u.username)) = LOWER(TRIM(:username)) AND u.is_active = 1"
   );
   $stmt->execute([":username" => $username]);
   $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -41,11 +43,64 @@ function login($json) {
     return json_encode(["message" => "Invalid username or password."]);
   }
   $user['role_name'] = normalizeRoleName($user['role_name']);
+
+  // WP-2: Server-side auto terminal detection & Cashier lock enforcement
+  $detectedTerminal = detectClientTerminal($conn, $data);
+  $detectedTerminalId = $detectedTerminal ? (int)$detectedTerminal['pos_terminal_id'] : null;
+  $detectedTerminalName = $detectedTerminal['terminal_name'] ?? null;
+
+  if (strtolower(trim($user['role_name'])) === 'cashier') {
+    $assignedTerminalId = !empty($user['assigned_terminal_id']) ? (int)$user['assigned_terminal_id'] : null;
+    if (!$assignedTerminalId) {
+      http_response_code(403);
+      return json_encode([
+        "returnValue" => 0,
+        "message" => "This cashier account is not assigned to any POS terminal. Please contact an Administrator."
+      ]);
+    }
+    if (!$detectedTerminalId) {
+      http_response_code(403);
+      return json_encode([
+        "returnValue" => 0,
+        "message" => "This workstation is not registered as an active POS terminal."
+      ]);
+    }
+    if ($detectedTerminalId !== $assignedTerminalId) {
+      $assignedLabel = $user['assigned_terminal_name']
+        ? "{$user['assigned_terminal_name']} (Terminal {$assignedTerminalId})"
+        : "Terminal {$assignedTerminalId}";
+      $detectedLabel = $detectedTerminalName
+        ? "{$detectedTerminalName} (Terminal {$detectedTerminalId})"
+        : "Terminal {$detectedTerminalId}";
+      http_response_code(403);
+      return json_encode([
+        "returnValue" => 0,
+        "assignedTerminalId" => $assignedTerminalId,
+        "assignedTerminalName" => $user['assigned_terminal_name'] ?? "Terminal {$assignedTerminalId}",
+        "detectedTerminalId" => $detectedTerminalId,
+        "detectedTerminalName" => $detectedTerminalName,
+        "message" => "This account is assigned to {$assignedLabel}. Login from {$detectedLabel} is not permitted."
+      ]);
+    }
+  }
+
   session_regenerate_id(true);
   unset($user['password_hash']);
   $_SESSION['user'] = $user;
-  unset($_SESSION['pos_terminal_id']);
-  return json_encode(["returnValue" => 1, "user" => $user]);
+  if ($detectedTerminalId) {
+    $_SESSION['pos_terminal_id'] = $detectedTerminalId;
+  } else {
+    unset($_SESSION['pos_terminal_id']);
+  }
+  unset($_SESSION['shift_closed_lock']);
+
+  return json_encode([
+    "returnValue" => 1,
+    "user" => $user,
+    "selectedTerminalId" => $detectedTerminalId,
+    "selectedTerminalName" => $detectedTerminalName,
+    "detectedTerminal" => $detectedTerminal
+  ]);
 }
 
 function logout() {
@@ -58,14 +113,58 @@ function logout() {
   return json_encode(["returnValue" => 1]);
 }
 
+function detectWorkstationInfo($json = '') {
+  include "connection-pdo.php";
+  $data = [];
+  if (is_array($json)) {
+    $data = $json;
+  } elseif (is_string($json) && trim($json) !== '') {
+    $data = json_decode($json, true) ?: [];
+  }
+  $detected = detectClientTerminal($conn, $data);
+  $terminals = [];
+  try {
+    $terminals = $conn->query(
+      "SELECT pos_terminal_id, terminal_name, machine_identifier, device_token, ip_address, COALESCE(is_active, 1) AS is_active
+       FROM tblpos_terminals
+       WHERE COALESCE(is_active, 1) = 1
+       ORDER BY pos_terminal_id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    $terminals = $conn->query(
+      "SELECT pos_terminal_id, terminal_name FROM tblpos_terminals ORDER BY pos_terminal_id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+  }
+  return json_encode([
+    "returnValue" => 1,
+    "detectedTerminal" => $detected,
+    "terminals" => $terminals
+  ]);
+}
+
 function sessionInfo() {
+  if (!empty($_SESSION['shift_closed_lock'])) {
+    // Session was locked by End of Shift (EOS) — require fresh login
+    unset($_SESSION['user']);
+    unset($_SESSION['pos_terminal_id']);
+    unset($_SESSION['shift_closed_lock']);
+    return json_encode([
+      "authenticated" => false,
+      "user" => null,
+      "selectedTerminalId" => null,
+      "shiftLocked" => true
+    ]);
+  }
   $user = currentUser();
+  include "connection-pdo.php";
   if ($user) {
-    include "connection-pdo.php";
     $stmt = $conn->prepare(
-      "SELECT u.user_id, u.username, u.first_name, u.last_name, r.role_id, r.role_name
+      "SELECT u.user_id, u.username, u.first_name, u.last_name, u.assigned_terminal_id,
+              t.terminal_name AS assigned_terminal_name,
+              r.role_id, r.role_name
        FROM tblusers u
        INNER JOIN tblroles r ON r.role_id=u.role_id
+       LEFT JOIN tblpos_terminals t ON t.pos_terminal_id = u.assigned_terminal_id
        WHERE u.user_id=:userId AND u.is_active=1"
     );
     $stmt->execute([":userId"=>$user['user_id']]);
@@ -77,25 +176,59 @@ function sessionInfo() {
       unset($_SESSION['user']);
     }
   }
+
   $selectedTerminalId = null;
-  if ($user && strtolower(trim($user['role_name'])) === 'cashier' && !empty($_SESSION['pos_terminal_id'])) {
-    include "connection-pdo.php";
-    $terminalStmt = $conn->prepare(
-      "SELECT pos_terminal_id FROM tblpos_terminals WHERE pos_terminal_id=:terminalId"
-    );
-    $terminalStmt->execute([":terminalId"=>$_SESSION['pos_terminal_id']]);
-    $selectedTerminalId = $terminalStmt->fetchColumn();
-    if ($selectedTerminalId === false) {
-      unset($_SESSION['pos_terminal_id']);
-      $selectedTerminalId = null;
+  $selectedTerminalName = null;
+  $detectedTerminal = detectClientTerminal($conn);
+
+  if ($user) {
+    if (strtolower(trim($user['role_name'])) === 'cashier') {
+      // Cashier is strictly bound to their assigned terminal
+      $assignedId = !empty($user['assigned_terminal_id']) ? (int)$user['assigned_terminal_id'] : null;
+      $terminalIdToUse = !empty($_SESSION['pos_terminal_id']) ? (int)$_SESSION['pos_terminal_id'] : ($assignedId ?: ($detectedTerminal ? (int)$detectedTerminal['pos_terminal_id'] : null));
+      if ($assignedId && $terminalIdToUse !== $assignedId) {
+        $terminalIdToUse = $assignedId;
+      }
+      if ($terminalIdToUse) {
+        $terminalStmt = $conn->prepare(
+          "SELECT pos_terminal_id, terminal_name FROM tblpos_terminals WHERE pos_terminal_id=:terminalId"
+        );
+        $terminalStmt->execute([":terminalId"=>$terminalIdToUse]);
+        $tRow = $terminalStmt->fetch(PDO::FETCH_ASSOC);
+        if ($tRow) {
+          $selectedTerminalId = (int)$tRow['pos_terminal_id'];
+          $selectedTerminalName = $tRow['terminal_name'];
+          $_SESSION['pos_terminal_id'] = $selectedTerminalId;
+        }
+      }
+    } else {
+      // Exempt roles (Supervisor, Admin, Manager, AR Staff) use the auto-detected terminal on the register
+      $terminalIdToUse = !empty($_SESSION['pos_terminal_id'])
+        ? (int)$_SESSION['pos_terminal_id']
+        : ($detectedTerminal ? (int)$detectedTerminal['pos_terminal_id'] : null);
+      if ($terminalIdToUse) {
+        $terminalStmt = $conn->prepare(
+          "SELECT pos_terminal_id, terminal_name FROM tblpos_terminals WHERE pos_terminal_id=:terminalId"
+        );
+        $terminalStmt->execute([":terminalId"=>$terminalIdToUse]);
+        $tRow = $terminalStmt->fetch(PDO::FETCH_ASSOC);
+        if ($tRow) {
+          $selectedTerminalId = (int)$tRow['pos_terminal_id'];
+          $selectedTerminalName = $tRow['terminal_name'];
+          $_SESSION['pos_terminal_id'] = $selectedTerminalId;
+        }
+      }
     }
-  } elseif (!$user || strtolower(trim($user['role_name'])) !== 'cashier') {
+  } else {
     unset($_SESSION['pos_terminal_id']);
   }
+
   return json_encode([
     "authenticated" => (bool)$user,
     "user" => $user,
-    "selectedTerminalId" => $selectedTerminalId === null ? null : (int)$selectedTerminalId
+    "selectedTerminalId" => $selectedTerminalId === null ? null : (int)$selectedTerminalId,
+    "selectedTerminalName" => $selectedTerminalName,
+    "detectedTerminal" => $detectedTerminal
   ]);
 }
 
@@ -174,7 +307,7 @@ function verifySupervisor($json) {
 
   if (!$shiftId && $cashierId) {
     try {
-      $shiftStmt = $conn->prepare("SELECT shift_id FROM tblcash_shifts WHERE cashier_id = :cid AND closed_at IS NULL ORDER BY shift_id DESC LIMIT 1");
+      $shiftStmt = $conn->prepare("SELECT shift_id FROM tblshifts WHERE user_id = :cid AND status = 'open' ORDER BY shift_id DESC LIMIT 1");
       $shiftStmt->execute([":cid" => $cashierId]);
       $activeShift = $shiftStmt->fetch(PDO::FETCH_ASSOC);
       if ($activeShift) {
@@ -188,7 +321,7 @@ function verifySupervisor($json) {
   try {
     $logStmt = $conn->prepare(
       "INSERT INTO tblauthorization_log (cashier_id, supervisor_id, action_type, target_reference, shift_id, created_at)
-       VALUES (:cashierId, :supervisorId, :actionType, :targetRef, :shiftId, NOW())"
+       VALUES (:cashierId, :supervisorId, :actionType, :targetRef, :shiftId, CURRENT_TIMESTAMP)"
     );
     $logStmt->execute([
       ":cashierId" => $cashierId,
@@ -197,7 +330,7 @@ function verifySupervisor($json) {
       ":targetRef" => $targetRef ?: null,
       ":shiftId" => $shiftId
     ]);
-    $logId = $conn->lastInsertId();
+    $logId = (int)$conn->lastInsertId();
   } catch (PDOException $e) {
     error_log("Failed to insert authorization log: " . $e->getMessage());
     $logId = null;
@@ -207,6 +340,7 @@ function verifySupervisor($json) {
     "returnValue" => 1,
     "authorized" => true,
     "log_id" => $logId,
+    "auth_log_id" => $logId,
     "supervisor" => [
       "user_id" => (int)$supervisor['user_id'],
       "username" => $supervisor['username'],
@@ -228,6 +362,7 @@ switch ($op) {
   case "login": echo login($json); break;
   case "logout": echo logout(); break;
   case "session": echo sessionInfo(); break;
+  case "detectWorkstation": echo detectWorkstationInfo($json); break;
   case "setUserPassword": echo setUserPassword($json); break;
   case "verify_supervisor":
   case "verifySupervisor":

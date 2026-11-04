@@ -31,6 +31,9 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("table-div").innerHTML =
         '<div class="alert alert-danger">Unable to load AR customer data.</div>';
     });
+  document.getElementById("ar-customer-master-search")?.addEventListener("input", () => {
+    applySortAndRender();
+  });
   document.getElementById("add-form").addEventListener("submit", (event) => {
     event.preventDefault();
     insertArCustomer();
@@ -77,7 +80,18 @@ const applySortAndRender = () => {
     const idB = Number(b.ar_customer_id || 0);
     return customerSortOrder === "desc" ? idB - idA : idA - idB;
   });
-  displayRecordsTable(allCustomerRecords);
+  const q = (document.getElementById("ar-customer-master-search")?.value || "").toLowerCase().trim();
+  const filtered = !q
+    ? allCustomerRecords
+    : allCustomerRecords.filter((c) =>
+        String(c.ar_customer_id || "").toLowerCase().includes(q) ||
+        String(c.customer_name || "").toLowerCase().includes(q) ||
+        String(c.contact_name || "").toLowerCase().includes(q) ||
+        String(c.type_name || "").toLowerCase().includes(q) ||
+        String(c.contact_phone || "").toLowerCase().includes(q) ||
+        String(c.billing_address || "").toLowerCase().includes(q)
+      );
+  displayRecordsTable(filtered);
 };
 
 const displayRecords = async () => {

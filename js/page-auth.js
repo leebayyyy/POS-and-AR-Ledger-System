@@ -1,4 +1,5 @@
-import { requirePageRole, addLogout, getSession, logoutUser, confirmLogout } from "./auth.js?v=20261021";
+import "./delete-as-backspace.js";
+import { requirePageRole, addLogout, getSession, logoutUser, confirmLogout } from "./auth.js?v=20261022";
 
 const page = window.location.pathname.split("/").pop() || "index.html";
 
@@ -84,13 +85,11 @@ const user = await requirePageRole(permissions[page] || []);
 if (user) {
   const session = await getSession();
   if (user.role_name === "Cashier") {
-    if (page !== "terminal_select.html" && !session.selectedTerminalId) {
-      window.location.replace("terminal_select.html");
-    } else if (page === "terminal_select.html" && session.selectedTerminalId) {
-      window.location.replace("sales.html");
-    } else if (page === "index.html") {
+    if (page === "terminal_select.html" || page === "index.html") {
       window.location.replace("sales.html");
     }
+  } else if (page === "terminal_select.html") {
+    window.location.replace("index.html");
   }
   renderNavigation(user, session);
 }
@@ -329,7 +328,9 @@ function renderCashierNavbar(nav, currentUser, session) {
   const termSpan = document.createElement("span");
   termSpan.className = "badge bg-secondary text-light px-2 py-1";
   termSpan.id = "cashier-nav-terminal";
-  termSpan.textContent = "Loading Terminal...";
+  termSpan.setAttribute("aria-readonly", "true");
+  termSpan.title = "Auto-assigned POS Terminal (Read-Only)";
+  termSpan.textContent = session?.selectedTerminalName || "Loading Terminal...";
 
   const userSpan = document.createElement("span");
   userSpan.className = "navbar-text text-light small fw-semibold me-2";

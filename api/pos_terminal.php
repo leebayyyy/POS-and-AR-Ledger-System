@@ -10,22 +10,30 @@ $data = json_decode($json, true);
 if ($operation === 'getAllPosTerminals') {
   requireRoles(["Admin", "Cashier", "Manager", "Supervisor"]);
   include "connection-pdo.php";
-  echo json_encode($conn->query(
-    "SELECT pos_terminal_id, terminal_name FROM tblpos_terminals ORDER BY terminal_name"
-  )->fetchAll(PDO::FETCH_ASSOC));
+  $rows = $conn->query(
+    "SELECT t.pos_terminal_id, t.terminal_name,
+            t.machine_identifier, t.device_token, t.ip_address, COALESCE(t.is_active, 1) AS is_active,
+            (SELECT COUNT(*) FROM tblusers u WHERE u.assigned_terminal_id = t.pos_terminal_id AND u.is_active = 1) AS assigned_cashiers_count
+     FROM tblpos_terminals t
+     ORDER BY t.pos_terminal_id ASC"
+  )->fetchAll(PDO::FETCH_ASSOC);
+  echo json_encode($rows);
   exit;
 }
 
 if ($operation === 'selectTerminal') {
   $cashier = requireRoles(["Cashier"]);
   include "connection-pdo.php";
-  if (!empty($_SESSION['pos_terminal_id'])) {
-    http_response_code(409);
-    echo json_encode(["message"=>"A POS terminal is already selected for this login. Log out and sign in again to choose a different terminal."]);
+  // WP-2: Cashiers are strictly bound to their assigned terminal; reject manual override to a different terminal
+  $assignedId = !empty($cashier['assigned_terminal_id']) ? (int)$cashier['assigned_terminal_id'] : null;
+  $terminalId = filter_var($data['terminalId'] ?? null, FILTER_VALIDATE_INT);
+  if ($assignedId && $terminalId && (int)$terminalId !== $assignedId) {
+    http_response_code(403);
+    echo json_encode(["returnValue" => 0, "message" => "Cashiers are locked to their assigned terminal (#{$assignedId})."]);
     exit;
   }
-  $terminalId = filter_var($data['terminalId'] ?? null, FILTER_VALIDATE_INT);
-  if (!$terminalId || $terminalId < 1) {
+  $resolvedId = $assignedId ?: $terminalId;
+  if (!$resolvedId || $resolvedId < 1) {
     http_response_code(422);
     echo json_encode(["message"=>"Select a valid POS terminal."]);
     exit;
@@ -33,7 +41,7 @@ if ($operation === 'selectTerminal') {
   $terminalStmt = $conn->prepare(
     "SELECT pos_terminal_id, terminal_name FROM tblpos_terminals WHERE pos_terminal_id=:terminalId"
   );
-  $terminalStmt->execute([":terminalId"=>$terminalId]);
+  $terminalStmt->execute([":terminalId"=>$resolvedId]);
   $terminal = $terminalStmt->fetch(PDO::FETCH_ASSOC);
   if (!$terminal) {
     http_response_code(422);
@@ -62,7 +70,10 @@ if ($operation === 'getPosTerminal') {
     echo json_encode(["message"=>"A valid POS terminal is required."]);
     exit;
   }
-  $stmt = $conn->prepare("SELECT pos_terminal_id, terminal_name FROM tblpos_terminals WHERE pos_terminal_id=:id");
+  $stmt = $conn->prepare(
+    "SELECT pos_terminal_id, terminal_name, machine_identifier, device_token, ip_address, COALESCE(is_active, 1) AS is_active
+     FROM tblpos_terminals WHERE pos_terminal_id=:id"
+  );
   $stmt->execute([":id"=>$terminalId]);
   echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
   exit;
@@ -70,13 +81,30 @@ if ($operation === 'getPosTerminal') {
 
 if ($operation === 'insertPosTerminal') {
   $name = trim((string)($data['terminalName'] ?? ''));
+  $machineIdentifier = trim((string)($data['machineIdentifier'] ?? ''));
+  $deviceToken = trim((string)($data['deviceToken'] ?? ''));
+  $ipAddress = trim((string)($data['ipAddress'] ?? ''));
   if ($name === '' || strlen($name) > 150) {
     http_response_code(422);
     echo json_encode(["message"=>"Enter a terminal name up to 150 characters."]);
     exit;
   }
-  $stmt = $conn->prepare("INSERT INTO tblpos_terminals(terminal_name) VALUES(:terminalName)");
-  $stmt->execute([":terminalName"=>$name]);
+  if ($machineIdentifier === '') {
+    $machineIdentifier = 'TERM-' . strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 8));
+  }
+  if ($deviceToken === '') {
+    $deviceToken = 'TOKEN-' . strtoupper(bin2hex(random_bytes(3)));
+  }
+  $stmt = $conn->prepare(
+    "INSERT INTO tblpos_terminals(terminal_name, machine_identifier, device_token, ip_address, is_active)
+     VALUES(:terminalName, :machineId, :deviceToken, :ipAddr, 1)"
+  );
+  $stmt->execute([
+    ":terminalName" => $name,
+    ":machineId" => $machineIdentifier,
+    ":deviceToken" => $deviceToken,
+    ":ipAddr" => $ipAddress ?: null
+  ]);
   echo json_encode(1);
   exit;
 }
@@ -84,14 +112,64 @@ if ($operation === 'insertPosTerminal') {
 if ($operation === 'updatePosTerminal') {
   $terminalId = filter_var($data['posTerminalId'] ?? null, FILTER_VALIDATE_INT);
   $name = trim((string)($data['terminalName'] ?? ''));
+  $machineIdentifier = trim((string)($data['machineIdentifier'] ?? ''));
+  $deviceToken = trim((string)($data['deviceToken'] ?? ''));
+  $ipAddress = trim((string)($data['ipAddress'] ?? ''));
   if (!$terminalId || $terminalId < 1 || $name === '' || strlen($name) > 150) {
     http_response_code(422);
     echo json_encode(["message"=>"Enter a valid terminal and name up to 150 characters."]);
     exit;
   }
-  $stmt = $conn->prepare("UPDATE tblpos_terminals SET terminal_name=:name WHERE pos_terminal_id=:id");
-  $stmt->execute([":name"=>$name, ":id"=>$terminalId]);
+  $stmt = $conn->prepare(
+    "UPDATE tblpos_terminals
+     SET terminal_name = :name,
+         machine_identifier = COALESCE(NULLIF(:machineId, ''), machine_identifier),
+         device_token = COALESCE(NULLIF(:deviceToken, ''), device_token),
+         ip_address = :ipAddr
+     WHERE pos_terminal_id = :id"
+  );
+  $stmt->execute([
+    ":name" => $name,
+    ":machineId" => $machineIdentifier,
+    ":deviceToken" => $deviceToken,
+    ":ipAddr" => $ipAddress ?: null,
+    ":id" => $terminalId
+  ]);
   echo json_encode(1);
+  exit;
+}
+
+if ($operation === 'setDefaultLocalhostTerminal') {
+  $terminalId = filter_var($data['posTerminalId'] ?? null, FILTER_VALIDATE_INT);
+  if (!$terminalId || $terminalId < 1) {
+    http_response_code(422);
+    echo json_encode(["returnValue" => 0, "message" => "A valid POS terminal ID is required."]);
+    exit;
+  }
+  $chk = $conn->prepare("SELECT pos_terminal_id, terminal_name, device_token, machine_identifier FROM tblpos_terminals WHERE pos_terminal_id = :id");
+  $chk->execute([":id" => $terminalId]);
+  $term = $chk->fetch(PDO::FETCH_ASSOC);
+  if (!$term) {
+    http_response_code(404);
+    echo json_encode(["returnValue" => 0, "message" => "Terminal not found."]);
+    exit;
+  }
+  $upd = $conn->prepare("UPDATE tblsystem_settings SET setting_value = :val, updated_at = CURRENT_TIMESTAMP WHERE setting_key = 'default_localhost_terminal_id'");
+  $upd->execute([":val" => (string)$terminalId]);
+  if ($upd->rowCount() === 0) {
+    try {
+      $ins = $conn->prepare("INSERT INTO tblsystem_settings (setting_key, setting_value) VALUES ('default_localhost_terminal_id', :val)");
+      $ins->execute([":val" => (string)$terminalId]);
+    } catch (Throwable $e) {
+      // Ignore if already exists with same value
+    }
+  }
+  $_SESSION['pos_terminal_id'] = (int)$terminalId;
+  echo json_encode([
+    "returnValue" => 1,
+    "terminal" => $term,
+    "message" => "Default localhost workstation bound to {$term['terminal_name']}."
+  ]);
   exit;
 }
 

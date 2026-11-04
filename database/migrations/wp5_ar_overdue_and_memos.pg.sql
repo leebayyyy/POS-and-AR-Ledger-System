@@ -1,0 +1,68 @@
+-- ============================================================================
+-- WP-5 Migration (PostgreSQL): AR Overdue Policies + Credit/Debit Memos
+-- ============================================================================
+-- Forward Migration:
+-- 1. Create tblar_ledger_entries for explicit auditable Credit Memos, Debit Memos,
+--    Overdue Interest, and Overdue Penalty adjustments.
+-- 2. Add principal_amount to tblar_invoice to track base principal for overdue math.
+-- 3. Seed configurable AR Overdue Policy settings in tblsystem_settings.
+-- ============================================================================
+
+BEGIN;
+
+ALTER TABLE tblar_invoice
+  ADD COLUMN IF NOT EXISTS principal_amount NUMERIC(12,2) NULL;
+
+UPDATE tblar_invoice
+SET principal_amount = invoice_amount
+WHERE principal_amount IS NULL;
+
+CREATE TABLE IF NOT EXISTS tblar_ledger_entries (
+  entry_id SERIAL PRIMARY KEY,
+  entry_number VARCHAR(50) NOT NULL UNIQUE,
+  ar_customer_id INT NOT NULL REFERENCES tblar_customers(ar_customer_id) ON DELETE CASCADE,
+  ar_invoice_id INT NULL REFERENCES tblar_invoice(ar_invoice_id) ON DELETE SET NULL,
+  shift_id INT NULL REFERENCES tblshifts(shift_id) ON DELETE SET NULL,
+  entry_type VARCHAR(30) NOT NULL CHECK (entry_type IN ('credit_memo', 'debit_memo', 'overdue_interest', 'overdue_penalty')),
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  reason VARCHAR(255) NOT NULL,
+  reference_no VARCHAR(100) NOT NULL,
+  interest_mode VARCHAR(20) NULL,
+  interest_rate_pct NUMERIC(6,2) NULL,
+  days_overdue INT NULL,
+  periods_applied INT NULL,
+  balance_before NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  balance_after NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  authorized_by_supervisor_id INT NULL REFERENCES tblusers(user_id) ON DELETE SET NULL,
+  created_by_user_id INT NOT NULL REFERENCES tblusers(user_id),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ar_ledger_customer ON tblar_ledger_entries(ar_customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ar_ledger_invoice ON tblar_ledger_entries(ar_invoice_id);
+CREATE INDEX IF NOT EXISTS idx_ar_ledger_shift ON tblar_ledger_entries(shift_id);
+
+INSERT INTO tblsystem_settings (setting_key, setting_value)
+VALUES
+  ('ar_default_term_days', '30'),
+  ('ar_interest_mode', 'fixed'),
+  ('ar_interest_rate_pct', '5.00'),
+  ('ar_penalty_mode', 'flat'),
+  ('ar_penalty_value', '50.00'),
+  ('ar_block_overdue_accounts', '1')
+ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
+
+COMMIT;
+
+-- ============================================================================
+-- Rollback Notes (PostgreSQL):
+-- BEGIN;
+-- DROP TABLE IF EXISTS tblar_ledger_entries;
+-- ALTER TABLE tblar_invoice DROP COLUMN IF EXISTS principal_amount;
+-- DELETE FROM tblsystem_settings WHERE setting_key IN (
+--   'ar_default_term_days', 'ar_interest_mode', 'ar_interest_rate_pct',
+--   'ar_penalty_mode', 'ar_penalty_value', 'ar_block_overdue_accounts'
+-- );
+-- COMMIT;
+-- ============================================================================
+

@@ -1,12 +1,12 @@
-import { showToast, showError } from "../swal-helper.js";
+import { showToast } from "../swal-helper.js";
 
-export const updateModal = async (userId, roleList, refreshDisplay, currentUserId) => {
+export const updateModal = async (userId, roleList, refreshDisplay, currentUserId, terminalList = []) => {
   const myModal = new bootstrap.Modal(document.getElementById("blank-modal"), {
     keyboard: true,
     backdrop: "static",
   });
 
-  document.getElementById("blank-modal-title").innerText = "Update User";
+  document.getElementById("blank-modal-title").innerText = "Update User & Terminal Binding";
   const record = await getUserDetails(userId);
   const roles = [...roleList];
   if (!roles.some((role) => Number(role.role_id) === Number(record.role_id))) {
@@ -15,7 +15,7 @@ export const updateModal = async (userId, roleList, refreshDisplay, currentUserI
   const isCurrentUser = Number(userId) === Number(currentUserId);
 
   let myHtml = `
-        <table class="table table-sm">
+        <table class="table table-sm align-middle">
           <tr>
             <td>Username</td>
             <td><input type="text" id="update-username" class="form-control" maxlength="50" value="${escapeHtml(record.username)}" required /></td>
@@ -31,6 +31,10 @@ export const updateModal = async (userId, roleList, refreshDisplay, currentUserI
           <tr>
             <td>Role</td>
             <td><select class="form-select" id="update-role_id"></select></td>
+          </tr>
+          <tr>
+            <td>Assigned Terminal</td>
+            <td><select class="form-select" id="update-assigned_terminal_id"></select></td>
           </tr>
           <tr>
             <td>Email</td>
@@ -54,6 +58,14 @@ export const updateModal = async (userId, roleList, refreshDisplay, currentUserI
     optionsHtml += `<option value="${role.role_id}" ${selected}>${escapeHtml(role.role_name)}</option>`;
   });
   document.getElementById("update-role_id").innerHTML = optionsHtml;
+
+  let termOptionsHtml = '<option value="">-- Exempt / Unassigned --</option>';
+  terminalList.forEach((t) => {
+    const selected = Number(record.assigned_terminal_id) === Number(t.pos_terminal_id) ? "selected" : "";
+    termOptionsHtml += `<option value="${t.pos_terminal_id}" ${selected}>${escapeHtml(t.terminal_name)} (ID #${t.pos_terminal_id})</option>`;
+  });
+  document.getElementById("update-assigned_terminal_id").innerHTML = termOptionsHtml;
+
   if (isCurrentUser) {
     document.getElementById("update-role_id").disabled = true;
     document.getElementById("update-role_id").insertAdjacentHTML(
@@ -114,6 +126,7 @@ const updateUser = async (userId) => {
     firstName: document.getElementById("update-first_name").value,
     lastName: document.getElementById("update-last_name").value,
     roleId: document.getElementById("update-role_id").value,
+    assignedTerminalId: document.getElementById("update-assigned_terminal_id")?.value || null,
     email: document.getElementById("update-email").value,
     phone: document.getElementById("update-phone").value,
     password: document.getElementById("update-password").value,

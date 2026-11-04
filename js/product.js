@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-add").addEventListener("click", () => {
     renderAddModal();
   });
+  document.getElementById("product-master-search")?.addEventListener("input", () => {
+    filterAndRenderProducts();
+  });
   await loadProductCategory();
   await loadUnitOfMeasure();
   await loadPromotions();
@@ -155,20 +158,41 @@ const loadPromotions = async () => {
   }
 };
 
+let allProductsCache = [];
+let productSortColumn = "product_id";
+let productSortDirection = "desc";
+
+const filterAndRenderProducts = () => {
+  const q = (document.getElementById("product-master-search")?.value || "").toLowerCase().trim();
+  if (!q) {
+    displayRecordsTable(allProductsCache);
+    return;
+  }
+  const filtered = allProductsCache.filter((p) => {
+    const code = String(p.product_id || "").padStart(8, "0");
+    return (
+      String(p.product_id || "").toLowerCase().includes(q) ||
+      code.includes(q) ||
+      String(p.barcode || "").toLowerCase().includes(q) ||
+      String(p.product_name || "").toLowerCase().includes(q) ||
+      String(p.category_name || "").toLowerCase().includes(q)
+    );
+  });
+  displayRecordsTable(filtered);
+};
+
 const displayRecords = async () => {
   const response = await axios.get(`${baseApiUrl}/product.php`, {
     params: { operation: "getAllProducts" },
     withCredentials: true,
   });
   if (response.status == 200) {
-    displayRecordsTable(response.data);
+    allProductsCache = Array.isArray(response.data) ? response.data : [];
+    filterAndRenderProducts();
   } else {
     showError("Error loading products!");
   }
 };
-
-let productSortColumn = "product_id";
-let productSortDirection = "desc";
 
 const displayRecordsTable = (records) => {
   const tableDiv = document.getElementById("table-div");

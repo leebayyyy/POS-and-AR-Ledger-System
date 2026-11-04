@@ -217,6 +217,7 @@ body.pos-body {
   border: 1px solid var(--pos-border-color);
 }
 
+/* Color 1: Standard/Primary Action Chip (Crisp Light #f8fafc on #1e293b, border #475569) */
 .pos-hotkey-btn {
   background: #1e293b;
   color: #f8fafc;
@@ -240,15 +241,44 @@ body.pos-body {
   border-color: #38bdf8;
 }
 
+/* Color 2: Reserved Warning/Destructive Chip (#ef4444 - Void Line, Void Trans, Clear) */
+.pos-hotkey-btn.pos-hotkey-destructive {
+  background: #1e293b;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.pos-hotkey-btn.pos-hotkey-destructive:hover,
+.pos-hotkey-btn.pos-hotkey-destructive:focus-visible {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+/* On-screen destructive action styling consistency with Color 2 (#ef4444) */
+.btn-outline-danger {
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Color 3: Uniform Keycap Badges across all F-keys and shortcuts (Sky Blue #38bdf8) */
 .pos-key-badge {
   background: #0f172a;
-  color: var(--pos-accent-amber);
-  border: 1px solid #475569;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
   border-radius: 0.25rem;
-  padding: 0.1rem 0.25rem;
+  padding: 0.1rem 0.28rem;
   font-family: monospace;
   font-weight: 700;
   font-size: 0.725rem;
+  line-height: 1;
 }
 
 /* Tender Modal & Sukli (Change) Display */
@@ -854,3 +884,71 @@ tr.kb-focus {
   outline: 2px solid #2563eb !important;
   outline-offset: -1px !important;
 }
+
+/* SUKI toggle & AR customer search focus styling */
+#suki-card-toggle:focus,
+#suki-card-toggle.kb-focus {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3) !important;
+}
+
+#ar-customer-search-filter:focus,
+#ar-customer-search-filter.kb-focus {
+  border-color: #2563eb !important;
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 1px !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Payment Method Control & Modal Options */
+#payment-method-control:focus,
+#payment-method-control.kb-focus {
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3) !important;
+}
+
+.payment-method-option {
+  cursor: pointer;
+  transition: all 0.12s ease;
+  border-left: 4px solid transparent !important;
+}
+
+.payment-method-option.is-highlighted,
+.payment-method-option.active,
+.payment-method-option:focus {
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+  border-left: 4px solid #2563eb !important;
+  font-weight: 700 !important;
+  outline: 2px solid #2563eb !important;
+  outline-offset: -2px !important;
+}
+
+/* Sales Receipt Modal Footer Centering */
+#receipt-modal .modal-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 0.75rem 0 !important;
+}
+
+#receipt-modal .modal-footer > * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+#receipt-modal .receipt-actions-group {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  width: auto !important;
+  margin: 0 auto !important;
+}
+
+
+

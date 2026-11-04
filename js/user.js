@@ -1,12 +1,15 @@
-import { updateModal } from "./modules/user-update.js";
+import { updateModal } from "./modules/user-update.js?v=20261101";
 import { deactivateModal } from "./modules/user-delete.js";
-import { showToast, showError as showSwalError } from "./swal-helper.js";
+import { showToast } from "./swal-helper.js";
 
 const baseApiUrl = "api";
 sessionStorage.setItem("baseAPIUrl", baseApiUrl);
 
 let roleList = [];
+let terminalList = [];
+let allUserRecords = [];
 let currentUser = null;
+
 document.addEventListener("DOMContentLoaded", () => {
   const addFieldsHtml = document.getElementById("blank-main-div").innerHTML;
   document.getElementById("btn-add").addEventListener("click", () => {
@@ -14,11 +17,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("blank-main-div").innerHTML = addFieldsHtml;
     document.getElementById("add-form").reset();
     loadRole();
+    loadTerminals();
     document.getElementById("blank-modal-footer").innerHTML = `
       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       <button type="submit" class="btn btn-primary" id="btn-submit" form="add-form">Submit</button>`;
   });
-  Promise.all([loadRole(), loadCurrentUser()]).then(displayRecords).catch(showError);
+  document.getElementById("user-search-filter")?.addEventListener("input", renderFilteredUsers);
+  Promise.all([loadRole(), loadTerminals(), loadCurrentUser()]).then(displayRecords).catch(showError);
   document.getElementById("add-form").addEventListener("submit", (event) => {
     event.preventDefault();
     insertUser();
@@ -34,13 +39,35 @@ const loadRole = async () => {
   if (response.status == 200) {
     roleList = response.data.filter((role) =>
       ["Cashier", "Accounts Receivable Staff", "Manager", "Supervisor"].includes(role.role_name));
-    select.innerHTML = '<option value="">-- SELECT ROLE --</option>';
-    roleList.forEach((role) => {
-      const option = document.createElement("option");
-      option.textContent = role.role_name;
-      option.value = role.role_id;
-      select.appendChild(option);
-    });
+    if (select) {
+      select.innerHTML = '<option value="">-- SELECT ROLE --</option>';
+      roleList.forEach((role) => {
+        const option = document.createElement("option");
+        option.textContent = role.role_name;
+        option.value = role.role_id;
+        select.appendChild(option);
+      });
+    }
+  }
+};
+
+const loadTerminals = async () => {
+  const select = document.getElementById("assigned_terminal_id");
+  const response = await axios.get(`${baseApiUrl}/pos_terminal.php`, {
+    params: { operation: "getAllPosTerminals" },
+    withCredentials: true,
+  });
+  if (response.status == 200) {
+    terminalList = response.data || [];
+    if (select) {
+      select.innerHTML = '<option value="">-- Exempt / Unassigned --</option>';
+      terminalList.forEach((t) => {
+        const option = document.createElement("option");
+        option.textContent = `${t.terminal_name} (ID #${t.pos_terminal_id})`;
+        option.value = t.pos_terminal_id;
+        select.appendChild(option);
+      });
+    }
   }
 };
 
@@ -66,7 +93,8 @@ const displayRecords = async () => {
     withCredentials: true,
   });
   if (response.status == 200) {
-    displayRecordsTable(response.data);
+    allUserRecords = response.data || [];
+    renderFilteredUsers();
   }
 };
 
@@ -80,11 +108,27 @@ const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character
 
 let userSortDirection = "desc";
 
+const renderFilteredUsers = () => {
+  const query = (document.getElementById("user-search-filter")?.value || "").toLowerCase().trim();
+  const filtered = allUserRecords.filter((u) => {
+    if (!query) return true;
+    return (
+      String(u.user_id).toLowerCase().includes(query) ||
+      String(u.username || "").toLowerCase().includes(query) ||
+      String(u.first_name || "").toLowerCase().includes(query) ||
+      String(u.last_name || "").toLowerCase().includes(query) ||
+      String(u.role_name || "").toLowerCase().includes(query) ||
+      String(u.assigned_terminal_name || "").toLowerCase().includes(query)
+    );
+  });
+  displayRecordsTable(filtered);
+};
+
 const displayRecordsTable = (records) => {
   const tableDiv = document.getElementById("table-div");
   tableDiv.innerHTML = "";
   const table = document.createElement("table");
-  table.classList.add("table", "table-hover", "table-striped", "table-sm");
+  table.classList.add("table", "table-hover", "table-striped", "table-sm", "align-middle");
 
   const sorted = [...records].sort((a, b) => {
     const idA = Number(a.user_id || 0);
@@ -93,6 +137,7 @@ const displayRecordsTable = (records) => {
   });
 
   const thead = document.createElement("thead");
+  thead.className = "table-light";
   thead.innerHTML = `
       <tr>
         <th id="th-user-id" style="cursor: pointer; user-select: none;" title="Click to sort by User ID">
@@ -102,6 +147,7 @@ const displayRecordsTable = (records) => {
         <th>FIRST NAME</th>
         <th>LAST NAME</th>
         <th>ROLE</th>
+        <th>ASSIGNED TERMINAL</th>
         <th>EMAIL</th>
         <th>PHONE</th>
         <th>STATUS</th>
@@ -112,13 +158,21 @@ const displayRecordsTable = (records) => {
 
   const tbody = document.createElement("tbody");
   sorted.forEach((user) => {
+    const isCashier = String(user.role_name || "").toLowerCase() === "cashier";
+    const terminalBadge = user.assigned_terminal_id
+      ? `<span class="badge bg-primary">${escapeHtml(user.assigned_terminal_name || `Terminal #${user.assigned_terminal_id}`)}</span>`
+      : isCashier
+      ? `<span class="badge bg-danger">Unassigned</span>`
+      : `<span class="badge bg-secondary">Exempt (All Terminals)</span>`;
+
     let row = document.createElement("tr");
     row.innerHTML = `
         <td class="font-monospace fw-bold">#${user.user_id}</td>
-        <td>${escapeHtml(user.username)}</td>
+        <td class="fw-semibold">${escapeHtml(user.username)}</td>
         <td>${escapeHtml(user.first_name)}</td>
         <td>${escapeHtml(user.last_name)}</td>
         <td>${escapeHtml(user.role_name)}</td>
+        <td>${terminalBadge}</td>
         <td>${escapeHtml(user.email)}</td>
         <td>${escapeHtml(user.phone)}</td>
         <td>${user.is_active == 1 ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
@@ -132,7 +186,7 @@ const displayRecordsTable = (records) => {
     tbody.appendChild(row);
 
     row.querySelector(".btn-update").addEventListener("click", () => {
-      updateModal(user.user_id, roleList, displayRecords, currentUser?.user_id);
+      updateModal(user.user_id, roleList, displayRecords, currentUser?.user_id, terminalList);
     });
 
     if (user.is_active == 1) {
@@ -150,7 +204,7 @@ const displayRecordsTable = (records) => {
 
   document.getElementById("th-user-id")?.addEventListener("click", () => {
     userSortDirection = userSortDirection === "desc" ? "asc" : "desc";
-    displayRecordsTable(records);
+    renderFilteredUsers();
   });
 };
 
@@ -162,6 +216,7 @@ const insertUser = async () => {
     firstName: document.getElementById("first_name").value,
     lastName: document.getElementById("last_name").value,
     roleId: document.getElementById("role_id").value,
+    assignedTerminalId: document.getElementById("assigned_terminal_id")?.value || null,
     email: document.getElementById("email").value,
     phone: document.getElementById("phone").value,
     password: document.getElementById("password").value,

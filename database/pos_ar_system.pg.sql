@@ -445,9 +445,10 @@ INSERT INTO tblar_customer_types (customer_type_id, type_name, description, days
 INSERT INTO tblusers (user_id, username, first_name, last_name, role_id, role, email, phone, password_hash, is_active) VALUES
 (1, 'admin', 'Juan', 'Dela Cruz', 1, 'admin', 'juan@gmail.com', '09171234567', '$2y$10$cTNL73nLB7FnCmTPKLGnneAq7rZNMuBUXPphSzojZSTMix6t/Gd4q', 1),
 (2, 'maria', 'Maria', 'Santos', 2, 'cashier', 'maria@gmail.com', '09181234567', '$2y$10$FxnQXXP7rNqEltzNKp9pueMXLXF3fJhSiCXJS3xeQ0Zc7f1aRqeEe', 1),
-(3, 'pedro', 'Pedro', 'Reyes', 3, 'ar_staff', 'pedro@gmail.com', '09191234567', '$2y$10$KBW70vKZV8oh.dnqZNlwpeU6E47zVdYOdg4n.0hWriXv4gLRE7AhK', 1),
+(3, 'pedro', 'Pedro', 'Reyes', 3, 'ar_staff', 'pedro@gmail.com', '09191234567', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1),
 (4, 'RC', 'RC', 'Baja', 4, 'manager', 'rcbaja@gmail.com', '09123456789', '$2y$10$jow2.oj.8fLqVbHdg0k.oekTM//5wnIxEBYdbK3igNFJYaZBDHSbG', 1),
-(5, 'supervisor', 'Store', 'Supervisor', 5, 'supervisor', 'supervisor@store.local', '09170000000', '$2y$10$/kWYECog1L8bP8D0QLLM.epIOg.F1xBJhnJYwzAqQTYUehCHxbIPm', 1);
+(5, 'supervisor', 'Store', 'Supervisor', 5, 'supervisor', 'supervisor@store.local', '09170000000', '$2y$10$/kWYECog1L8bP8D0QLLM.epIOg.F1xBJhnJYwzAqQTYUehCHxbIPm', 1),
+(6, 'ar_staff', 'AR', 'Staff', 3, 'ar_staff', 'ar_staff@pos.local', '09123456782', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1);
 
 -- Dumping data for table tblar_customers
 INSERT INTO tblar_customers (ar_customer_id, customer_name, customer_type_id, contact_name, contact_phone, billing_address, email, credit_limit, is_active) VALUES

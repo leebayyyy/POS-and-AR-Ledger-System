@@ -38,9 +38,12 @@
       </div>
     </nav>
     <div class="container mt-4">
-      <div id="header-div" class="d-flex justify-content-between align-items-center">
-        <h1 id="header-text">CUSTOMER TYPES</h1>
-        <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal" data-bs-target="#blank-modal">Add</button>
+      <div id="header-div" class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 id="header-text" class="mb-0">CUSTOMER TYPES</h1>
+        <div class="d-flex align-items-center gap-2">
+          <input type="search" id="customer-type-search-filter" class="form-control form-control-sm" style="min-width: 260px;" placeholder="Search customer types by ID, name, or description..." aria-label="Search customer types" />
+          <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal" data-bs-target="#blank-modal">Add</button>
+        </div>
       </div>
       <div id="main-div"></div>
       <div id="table-div" class="mt-3"></div>

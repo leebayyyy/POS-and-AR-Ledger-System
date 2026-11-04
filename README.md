@@ -16,17 +16,21 @@ rebuilt to match your reference document's conventions:
 
 1. Copy or link this whole `masterfile` folder into `htdocs/`.
 2. Create the database `pos_ar_system` and import `database/pos_ar_system.sql` in phpMyAdmin (or via MySQL CLI).
-3. If your MySQL root user has a password, edit `api/connection-pdo.php`.
-4. Open `http://localhost/masterfile/login.html` in your browser.
+3. Apply `database/revisions_mysql.sql` so the documented seeded accounts and required revisions are installed.
+4. If your MySQL root user has a password, edit `api/config.local.php`.
+5. Open `http://localhost/masterfile/login.html` in your browser.
 
 ### Default Login Accounts
 
 | Username | Password | Role |
 | :--- | :--- | :--- |
-| `admin` | `juantamad` | Admin |
-| `maria` | `mariasantos` | Cashier |
-| `pedro` | `pedropendoko` | Accounts Receivable Staff |
-| `RC` | `rcbaja87` | Manager |
+| `admin` | `admin123` | Admin |
+| `cashier` | `cashier123` | Cashier |
+| `maria` | `cashier123` | Cashier backup |
+| `ar_staff` | `ar123` | Accounts Receivable Staff |
+| `pedro` | `ar123` | Accounts Receivable Staff backup |
+| `RC` | `manager123` | Manager |
+| `supervisor` | `supervisor123` | Supervisor |
 
 For an existing installation, apply these migrations in order using phpMyAdmin:
 

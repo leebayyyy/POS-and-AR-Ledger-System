@@ -17,6 +17,15 @@ UPDATE tblusers SET role = 'cashier' WHERE role_id = 2;
 UPDATE tblusers SET role = 'ar_staff' WHERE role_id = 3;
 UPDATE tblusers SET role = 'manager' WHERE role_id = 4;
 
+-- Ensure both Accounts Receivable Staff accounts use the API's bcrypt credentials.
+INSERT INTO tblusers (username, first_name, last_name, role_id, role, email, phone, password_hash, is_active)
+VALUES
+  ('ar_staff', 'AR', 'Staff', 3, 'ar_staff', 'ar_staff@pos.local', '09123456782', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1),
+  ('pedro', 'Pedro', 'Reyes', 3, 'ar_staff', 'pedro@gmail.com', '09191234567', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1)
+ON CONFLICT (username) DO UPDATE
+SET role = EXCLUDED.role, role_id = EXCLUDED.role_id,
+    password_hash = EXCLUDED.password_hash, is_active = EXCLUDED.is_active;
+
 -- Seed Supervisor account (username: supervisor, password: supervisor123)
 -- Password hash: $2y$10$/kWYECog1L8bP8D0QLLM.epIOg.F1xBJhnJYwzAqQTYUehCHxbIPm
 INSERT INTO tblusers (user_id, username, first_name, last_name, role_id, role, email, phone, password_hash, is_active)

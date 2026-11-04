@@ -38,16 +38,20 @@ UPDATE tblusers SET password_hash = '$2y$10$ISXggypQ4fCkuBPjzyj2nePf3mLEq/EaNWuV
 -- Maria (Cashier backup): maria / cashier123
 UPDATE tblusers SET password_hash = '$2y$10$ISXggypQ4fCkuBPjzyj2nePf3mLEq/EaNWuVGsOINwlokr7j4gXkG', role = 'cashier', role_id = 2 WHERE username = 'maria';
 
--- AR Staff: ar_staff / ar123
+-- AR Staff accounts use bcrypt (PASSWORD_DEFAULT, cost 10): ar_staff / ar123 and pedro / ar123.
 INSERT INTO tblusers (username, first_name, last_name, role_id, role, email, phone, password_hash, is_active)
 SELECT 'ar_staff', 'AR', 'Staff', 3, 'ar_staff', 'ar_staff@pos.local', '09123456782', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1
 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM tblusers WHERE username = 'ar_staff');
+ON DUPLICATE KEY UPDATE
+  username = VALUES(username), role = VALUES(role), role_id = VALUES(role_id),
+  password_hash = VALUES(password_hash), is_active = VALUES(is_active);
 
-UPDATE tblusers SET password_hash = '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', role = 'ar_staff', role_id = 3 WHERE username = 'ar_staff';
-
--- Pedro (AR Staff backup): pedro / ar123
-UPDATE tblusers SET password_hash = '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', role = 'ar_staff', role_id = 3 WHERE username = 'pedro';
+INSERT INTO tblusers (username, first_name, last_name, role_id, role, email, phone, password_hash, is_active)
+SELECT 'pedro', 'Pedro', 'Reyes', 3, 'ar_staff', 'pedro@gmail.com', '09191234567', '$2y$10$pNRHO.2Qzos90jlZZBrV1..bVvx3xOBQ4SCRLBdR1GH5Fm0n/hqgK', 1
+FROM DUAL
+ON DUPLICATE KEY UPDATE
+  username = VALUES(username), role = VALUES(role), role_id = VALUES(role_id),
+  password_hash = VALUES(password_hash), is_active = VALUES(is_active);
 
 -- Manager: RC / manager123
 UPDATE tblusers SET password_hash = '$2y$10$roeHGi9SigrTjS2uwmWXIumc4Z7LVUKb8avljfeSqMd8zH8subz6W', role = 'manager', role_id = 4 WHERE username = 'RC';
@@ -150,4 +154,3 @@ CREATE TABLE IF NOT EXISTS tblwholesale_prices (
   effective_to DATE DEFAULT NULL,
   INDEX idx_wholesale_prices_product (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-

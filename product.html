@@ -38,9 +38,12 @@
       </div>
     </nav>
     <div class="container mt-4">
-      <div id="header-div" class="d-flex justify-content-between align-items-center">
-        <h1 id="header-text">PRODUCTS</h1>
-        <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal" data-bs-target="#blank-modal">Add</button>
+      <div id="header-div" class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 id="header-text" class="mb-0">PRODUCTS</h1>
+        <div class="d-flex align-items-center gap-2">
+          <input type="search" id="product-master-search" class="form-control form-control-sm" style="min-width: 280px;" placeholder="Search products by ID, barcode, name, or category..." aria-label="Search products" />
+          <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal" data-bs-target="#blank-modal">Add</button>
+        </div>
       </div>
       <div id="main-div">
       </div>

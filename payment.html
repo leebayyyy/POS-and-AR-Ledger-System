@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Payments</title>
+    <title>Payments &amp; AR Ledger</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script type="module" src="./js/page-auth.js?v=20261021"></script>
-    <script type="module" src="./js/payment.js?v=20261021"></script>
+    <script type="module" src="./js/page-auth.js?v=20261101"></script>
+    <script type="module" src="./js/payment.js?v=20261101"></script>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -34,6 +34,7 @@
           <li class="nav-item"><a class="nav-link" href="ar_customer_type.html">Customer Types</a></li>
           <li class="nav-item"><a class="nav-link" href="ar_customer.html">AR Customers</a></li>
           <li class="nav-item"><a class="nav-link active" href="payment.html">Payments</a></li>
+          <li class="nav-item"><a class="nav-link" href="ar_transactions.html">Transaction Ledger</a></li>
         </ul>
       </div>
     </nav>
@@ -41,19 +42,72 @@
     <div class="container mt-4">
       <div id="header-div" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
-          <h1 id="header-text" class="h3 fw-bold mb-1">PAYMENTS &amp; COLLECTIONS</h1>
-          <p class="text-muted small mb-0">Record customer debt settlements and manage receivable invoice histories</p>
+          <h1 id="header-text" class="h3 fw-bold mb-1">PAYMENTS, AGING &amp; AR LEDGER</h1>
+          <p class="text-muted small mb-0">Record customer debt settlements, credit/debit memos, and overdue ledger adjustments</p>
         </div>
-        <button type="button" class="btn btn-primary btn-lg fw-bold px-4 shadow-sm d-none" id="btn-add" data-bs-toggle="modal" data-bs-target="#payment-modal">Pay</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-dark fw-bold shadow-sm" id="btn-open-overdue-policy" data-bs-toggle="modal" data-bs-target="#overdue-policy-modal">
+            Overdue Policy &amp; Interest <span class="badge bg-secondary ms-1 font-monospace">Alt+O</span>
+          </button>
+          <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm" id="btn-open-memo-modal" data-bs-toggle="modal" data-bs-target="#memo-modal">
+            Credit / Debit Memo <span class="badge bg-dark ms-1 font-monospace">Alt+M</span>
+          </button>
+          <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm d-none" id="btn-add" data-bs-toggle="modal" data-bs-target="#payment-modal">
+            Pay Debt <span class="badge bg-light text-dark ms-1 font-monospace">Alt+P</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- WP-5 5A.3: AR Aging Buckets Summary Cards (Current, 1-30, 31-60, 60+) -->
+      <div class="row g-3 mb-3" id="ar-aging-buckets-row">
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body py-2 px-3">
+              <div class="small fw-bold text-uppercase text-muted">Current (Not Yet Due)</div>
+              <div class="h5 fw-bold font-monospace text-primary mb-0" id="aging-bucket-current-bal">₱0.00</div>
+              <small class="text-muted"><span id="aging-bucket-current-cnt">0</span> open invoice(s)</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+            <div class="card-body py-2 px-3">
+              <div class="small fw-bold text-uppercase text-muted">1–30 Days Overdue</div>
+              <div class="h5 fw-bold font-monospace text-info-emphasis mb-0" id="aging-bucket-1-30-bal">₱0.00</div>
+              <small class="text-muted"><span id="aging-bucket-1-30-cnt">0</span> open invoice(s)</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-body py-2 px-3">
+              <div class="small fw-bold text-uppercase text-muted">31–60 Days Overdue</div>
+              <div class="h5 fw-bold font-monospace text-warning-emphasis mb-0" id="aging-bucket-31-60-bal">₱0.00</div>
+              <small class="text-muted"><span id="aging-bucket-31-60-cnt">0</span> open invoice(s)</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-body py-2 px-3">
+              <div class="small fw-bold text-uppercase text-danger">60+ Days Overdue</div>
+              <div class="h5 fw-bold font-monospace text-danger mb-0" id="aging-bucket-60-plus-bal">₱0.00</div>
+              <small class="text-muted"><span id="aging-bucket-60-plus-cnt">0</span> open invoice(s)</small>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Nav Tabs -->
       <ul class="nav nav-pills mb-3 gap-2" id="ar-pills-tab" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active fw-bold" id="pills-invoices-tab" data-bs-toggle="pill" data-bs-target="#pills-invoices" type="button" role="tab">Customer Invoices &amp; Debts</button>
+          <button class="nav-link active fw-bold" id="pills-invoices-tab" data-bs-toggle="pill" data-bs-target="#pills-invoices" type="button" role="tab">Customer Invoices &amp; Aging</button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link fw-bold" id="pills-payments-tab" data-bs-toggle="pill" data-bs-target="#pills-payments" type="button" role="tab">Payment History &amp; Records</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-bold" id="pills-memos-tab" data-bs-toggle="pill" data-bs-target="#pills-memos" type="button" role="tab">Credit / Debit Memos &amp; AR Ledger History</button>
         </li>
       </ul>
 
@@ -68,7 +122,7 @@
                   <option value="">-- All Customers --</option>
                 </select>
               </div>
-              <input type="text" id="invoice-search-filter" class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search invoice #, customer..." />
+              <input type="text" id="invoice-search-filter" class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search invoice #, customer, bucket..." />
             </div>
             <div class="card-body p-0">
               <div id="invoices-table-div" class="table-responsive"></div>
@@ -88,9 +142,53 @@
             </div>
           </div>
         </div>
+
+        <!-- TAB 3: Credit / Debit Memos & AR Ledger History -->
+        <div class="tab-pane fade" id="pills-memos" role="tabpanel">
+          <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="small fw-bold text-muted text-uppercase">Account:</span>
+                <select id="memo-customer-filter" class="form-select form-select-sm fw-semibold" style="max-width: 260px;">
+                  <option value="">-- All Customers / Overview --</option>
+                </select>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-primary active" id="btn-ledger-view-running">Running Balance Ledger</button>
+                  <button type="button" class="btn btn-outline-secondary" id="btn-ledger-view-memos">Memos Only</button>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <input type="text" id="memo-search-filter" class="form-control form-control-sm" style="max-width: 250px;" placeholder="Search tx, ref #, desc..." />
+                <a href="ar_transactions.html" id="btn-open-full-ledger" class="btn btn-sm btn-outline-success text-nowrap fw-bold" target="_blank">
+                  Full Ledger Module &rarr;
+                </a>
+              </div>
+            </div>
+            <div id="ledger-account-summary-bar" class="bg-light border-bottom px-3 py-2 d-none">
+              <div class="row align-items-center g-2 text-center text-md-start">
+                <div class="col-md-4">
+                  <span class="text-muted small">Account:</span> <strong id="ledger-cust-name">—</strong>
+                  <div class="small text-muted">Credit Limit: <span id="ledger-cust-limit" class="font-monospace">₱0.00</span></div>
+                </div>
+                <div class="col-md-3">
+                  <span class="text-muted small">Total Debits (Dr):</span> <strong id="ledger-cust-dr" class="text-primary font-monospace">₱0.00</strong><br>
+                  <span class="text-muted small">Total Credits (Cr):</span> <strong id="ledger-cust-cr" class="text-success font-monospace">₱0.00</strong>
+                </div>
+                <div class="col-md-5 text-md-end">
+                  <span class="text-muted small">Current System Balance:</span> <strong id="ledger-cust-bal" class="h5 mb-0 text-danger font-monospace">₱0.00</strong>
+                  <div class="small"><span class="badge bg-success" id="ledger-sync-badge">Ledger In Sync</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div id="memos-table-div" class="table-responsive"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
+    <!-- FIFO Debt Settlement Modal -->
     <div class="modal fade" id="payment-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
       <div class="modal-dialog modal-xl">
         <div class="modal-content shadow-lg border-0">
@@ -170,7 +268,6 @@
                   </div>
                   <div class="small font-monospace">
                     <span class="badge bg-dark">Enter: Confirm</span>
-                    <span class="badge bg-secondary">Esc: Cancel</span>
                   </div>
                 </div>
                 <div class="card-body p-0">
@@ -202,7 +299,7 @@
             </div>
             <div class="modal-footer bg-light d-flex justify-content-between">
               <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                <span class="small font-monospace me-1">[Esc]</span> Cancel
+                <span class="small font-monospace me-1">[Home]</span> Cancel
               </button>
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-success fw-bold" id="btn-preview-allocation">
@@ -214,6 +311,149 @@
               </div>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- WP-5 5B: Credit & Debit Memo Modal (Direct Post - No Supervisor Gating) -->
+    <div class="modal fade" id="memo-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg border-0">
+          <form id="memo-form">
+            <div class="modal-header bg-warning text-dark">
+              <div>
+                <h5 class="modal-title fw-bold mb-0">ISSUE AR CREDIT / DEBIT MEMO</h5>
+                <small>Posts an auditable ledger entry and adjusts the customer's AR balance &amp; EOS AR totals.</small>
+              </div>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_type">Memo Type <span class="text-danger">*</span></label>
+                  <select class="form-select fw-bold" id="memo_type" required>
+                    <option value="credit_memo">Credit Memo (Reduces AR Balance — Discount / Write-off)</option>
+                    <option value="debit_memo">Debit Memo (Increases AR Balance — Correction / Manual Fee)</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_customer_id">AR Customer <span class="text-danger">*</span></label>
+                  <select class="form-select fw-semibold" id="memo_customer_id" required>
+                    <option value="">-- SELECT CUSTOMER --</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_invoice_id">Target AR Invoice</label>
+                  <select class="form-select font-monospace" id="memo_invoice_id">
+                    <option value="">-- Auto-select oldest open invoice --</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_amount">Memo Amount (₱) <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text fw-bold">₱</span>
+                    <input type="number" class="form-control font-monospace fw-bold" id="memo_amount" min="0.01" step="0.01" placeholder="0.00" required />
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_reference_no">Reference Number <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control font-monospace" id="memo_reference_no" placeholder="e.g. CM-2026-001" required />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold" for="memo_reason">Reason / Justification <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="memo_reason" placeholder="Owner-approved rebate, pricing adjustment, etc." required />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">[Home] Cancel</button>
+              <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btn-submit-memo">[Enter] Post Memo</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- WP-5 5A: Overdue Policy Settings & Overdue Interest/Penalty Engine Modal -->
+    <div class="modal fade" id="overdue-policy-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow-lg border-0">
+          <div class="modal-header bg-dark text-white">
+            <div>
+              <h5 class="modal-title fw-bold mb-0">AR OVERDUE POLICY &amp; EXPLICIT LEDGER CHARGE ENGINE</h5>
+              <small class="text-white-50">Configure default terms, interest mode (fixed vs compounding), penalty fees, and overdue checkout block.</small>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-4">
+              <!-- Left Column: Store AR Overdue Policy Configuration -->
+              <div class="col-md-6 border-end">
+                <h6 class="fw-bold text-uppercase text-secondary mb-3">1. Store AR Overdue Policy Settings</h6>
+                <form id="overdue-policy-form">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold small" for="policy_default_term_days">Default Credit Term (Days)</label>
+                      <input type="number" class="form-control font-monospace fw-bold" id="policy_default_term_days" min="1" max="3650" value="30" required />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold small" for="policy_interest_mode">Overdue Interest Mode</label>
+                      <select class="form-select fw-semibold" id="policy_interest_mode">
+                        <option value="fixed">Fixed (Simple on Principal)</option>
+                        <option value="compounding">Compounding (Per 30-Day Period)</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold small" for="policy_interest_rate_pct">Interest Rate (% per 30d period)</label>
+                      <input type="number" class="form-control font-monospace fw-bold" id="policy_interest_rate_pct" min="0" max="100" step="0.01" value="5.00" required />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold small" for="policy_penalty_mode">Penalty Fee Mode</label>
+                      <select class="form-select fw-semibold" id="policy_penalty_mode">
+                        <option value="flat">Flat Fee (₱)</option>
+                        <option value="percent">Percentage of Principal (%)</option>
+                        <option value="none">None (0.00)</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold small" for="policy_penalty_value">Penalty Fee Value</label>
+                      <input type="number" class="form-control font-monospace fw-bold" id="policy_penalty_value" min="0" step="0.01" value="50.00" required />
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                      <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" id="policy_block_overdue" checked />
+                        <label class="form-check-label fw-bold text-danger small" for="policy_block_overdue">Block Overdue Accounts at F8/Checkout</label>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <button type="submit" class="btn btn-dark fw-bold w-100" id="btn-save-overdue-policy">Save Store Overdue Policy</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Right Column: Overdue Interest & Penalty Calculator & Ledger Poster -->
+              <div class="col-md-6">
+                <h6 class="fw-bold text-uppercase text-secondary mb-3">2. Post Explicit Overdue Ledger Adjustment</h6>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small" for="overdue_target_invoice_id">Select Overdue / Open Invoice</label>
+                  <select class="form-select font-monospace" id="overdue_target_invoice_id">
+                    <option value="">-- Select Invoice --</option>
+                  </select>
+                </div>
+                <div id="overdue-calc-preview" class="card bg-light border p-3 mb-3 small font-monospace">
+                  Select an invoice to preview fixed/compounding overdue interest and penalty calculation.
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-outline-primary fw-bold flex-fill" id="btn-preview-overdue-charge">Preview Calculation</button>
+                  <button type="button" class="btn btn-danger fw-bold flex-fill" id="btn-apply-overdue-charge">Post Ledger Adjustment Entry</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">[Home] Close</button>
+          </div>
         </div>
       </div>
     </div>
