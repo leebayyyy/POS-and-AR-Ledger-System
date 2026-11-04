@@ -1,12 +1,16 @@
-import { getSession } from "./auth.js?v=3";
+import { getSession } from "./auth.js?v=20261021";
 import { showToast, showSuccess, showError as showSwalError } from "./swal-helper.js";
 
-const sukiUrl = "/api/suki_card.php";
+const sukiUrl = "api/suki_card.php";
 let canManageCards = false;
 let sukiSortDirection = "desc";
+let allSukiCardsCache = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("card-form").addEventListener("submit", saveCard);
+  document.getElementById("suki-search-filter")?.addEventListener("input", () => {
+    renderSukiTable();
+  });
   authorizeAndLoad().catch(showError);
 });
 
@@ -43,7 +47,20 @@ const loadCards = async () => {
     }
   }
 
-  const sortedCards = [...data.cards].sort((a, b) => {
+  allSukiCardsCache = Array.isArray(data.cards) ? data.cards : [];
+  renderSukiTable();
+};
+
+const renderSukiTable = () => {
+  const q = (document.getElementById("suki-search-filter")?.value || "").toLowerCase().trim();
+  const filtered = !q
+    ? allSukiCardsCache
+    : allSukiCardsCache.filter((c) =>
+        String(c.sku_card_id || "").toLowerCase().includes(q) ||
+        String(c.card_number || "").toLowerCase().includes(q) ||
+        String(c.customer_name || "").toLowerCase().includes(q)
+      );
+  const sortedCards = [...filtered].sort((a, b) => {
     const idA = Number(a.sku_card_id || 0);
     const idB = Number(b.sku_card_id || 0);
     return sukiSortDirection === "desc" ? idB - idA : idA - idB;

@@ -1,0 +1,6 @@
+# Local XAMPP development: always revalidate scripts/pages so edited JS is never served stale from the browser cache.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

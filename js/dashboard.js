@@ -1,6 +1,6 @@
-import { getSession } from "./auth.js?v=8";
+import { getSession } from "./auth.js?v=20261021";
 
-const reportsApiUrl = "/api/reports.php";
+const reportsApiUrl = "api/reports.php";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const root = document.getElementById("dashboard-root");
@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (user.role_name === "Admin") {
       renderAdminDashboard(root, user, summary);
-    } else if (user.role_name === "Manager") {
+    } else if (user.role_name === "Manager" || user.role_name === "Supervisor") {
       renderManagerDashboard(root, user, summary);
     } else if (user.role_name === "Accounts Receivable Staff") {
       renderArStaffDashboard(root, user, summary);
@@ -294,7 +294,7 @@ function renderManagerDashboard(container, user, summary) {
         <p class="text-muted small mb-0">Operational performance, register activity, transactions, and store audit</p>
       </div>
       <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-info text-dark px-3 py-2 fs-6">Store Manager</span>
+        <span class="badge ${user.role_name === 'Supervisor' ? 'bg-warning text-dark' : 'bg-info text-dark'} px-3 py-2 fs-6">${user.role_name === 'Supervisor' ? 'Store Supervisor' : 'Store Manager'}</span>
         <a href="reports.html" class="btn btn-primary btn-sm px-3">Full Audit Reports &rarr;</a>
       </div>
     </div>

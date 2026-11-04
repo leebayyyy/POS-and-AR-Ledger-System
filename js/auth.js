@@ -1,7 +1,7 @@
-const authApiUrl = "/api/auth.php";
-const defaultBaseApiUrl = "/api";
+const authApiUrl = "api/auth.php";
+const defaultBaseApiUrl = "api";
 
-if (!sessionStorage.getItem("baseAPIUrl") || sessionStorage.getItem("baseAPIUrl").includes("localhost") || sessionStorage.getItem("baseAPIUrl").startsWith("http")) {
+if (!sessionStorage.getItem("baseAPIUrl") || sessionStorage.getItem("baseAPIUrl").includes("localhost") || sessionStorage.getItem("baseAPIUrl").startsWith("http") || sessionStorage.getItem("baseAPIUrl").startsWith("/")) {
   sessionStorage.setItem("baseAPIUrl", defaultBaseApiUrl);
 }
 
@@ -96,19 +96,49 @@ export const logoutUser = async () => {
   }
 };
 
+let logoutDialogOpen = false;
+
 export const confirmLogout = async () => {
+  // One dialog at a time: mashed/auto-repeated Enter on the Logout control must not stack dialogs.
+  if (logoutDialogOpen) return;
   if (typeof Swal !== "undefined") {
-    const res = await Swal.fire({
-      title: "Log out of POS & AR?",
-      text: "Are you sure you want to end your current session?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc3545",
-      cancelButtonColor: "#6c757d",
-      confirmButtonText: "Yes, Logout",
-      cancelButtonText: "Stay Logged In"
-    });
-    if (!res.isConfirmed) return;
+    logoutDialogOpen = true;
+    // Remember where the cashier was so Cancel/Esc puts them back there (e.g. the Logout button).
+    const trigger = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+    // Ignore OS auto-repeat Enter while the dialog is up so a held key can never activate a button.
+    const swallowRepeat = (e) => {
+      if (e.repeat && e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("keydown", swallowRepeat, true);
+    let res;
+    try {
+      res = await Swal.fire({
+        title: "Log out of POS & AR?",
+        text: "Are you sure you want to end your current session?",
+        icon: "warning",
+        showCancelButton: true,
+        focusCancel: true, // safe default: a double-Enter cancels instead of logging out
+        returnFocus: false,
+        confirmButtonColor: "#dc3545",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Yes, Logout",
+        cancelButtonText: "Stay Logged In"
+      });
+    } finally {
+      window.removeEventListener("keydown", swallowRepeat, true);
+      logoutDialogOpen = false;
+    }
+    if (!res.isConfirmed) {
+      const back = trigger && trigger.isConnected ? trigger : document.getElementById("barcode-input");
+      if (back) {
+        back.focus();
+        if (back === document.getElementById("barcode-input") && typeof back.select === "function") back.select();
+      }
+      return;
+    }
   }
   await logoutUser();
 };

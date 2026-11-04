@@ -2,7 +2,7 @@
 require_once "auth-lib.php";
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-$user = requireRoles(["Admin", "Accounts Receivable Staff", "Manager"]);
+$user = requireRoles(["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"]);
 include "connection-pdo.php";
 $operation = $_SERVER['REQUEST_METHOD'] === 'GET' ? ($_GET['operation'] ?? '') : ($_POST['operation'] ?? '');
 $json = $_SERVER['REQUEST_METHOD'] === 'GET' ? ($_GET['json'] ?? '') : ($_POST['json'] ?? '');
@@ -68,7 +68,7 @@ if ($operation === 'getData') {
     $invNumber = "INV-" . str_pad((string)$ub['sale_id'], 8, "0", STR_PAD_LEFT);
     $ins = $conn->prepare(
       "INSERT INTO tblar_invoice (invoice_number, ar_customer_id, sale_id, created_by_user_id, invoice_date, due_date, invoice_amount, balance, status)
-       VALUES (:number, :customerId, :saleId, :userId, :saleDate, (CAST(:saleDate2 AS date) + (CAST(:days AS integer) * INTERVAL '1 day'))::date, :amount, :balance, 'Approved')"
+       VALUES (:number, :customerId, :saleId, :userId, :saleDate, DATE_ADD(CAST(:saleDate2 AS DATE), INTERVAL CAST(:days AS SIGNED) DAY), :amount, :balance, 'Approved')"
     );
     $ins->execute([
       ":number" => $invNumber,
@@ -96,7 +96,7 @@ if ($operation === 'getData') {
             END AS collection_status,
             CASE
               WHEN COALESCE(i.balance, 0) > 0 AND i.due_date < CURRENT_DATE
-              THEN (CURRENT_DATE - i.due_date)
+              THEN DATEDIFF(CURRENT_DATE, i.due_date)
               ELSE 0
             END AS days_overdue
      FROM tblar_invoice i

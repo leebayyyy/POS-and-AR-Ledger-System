@@ -157,9 +157,44 @@ body.pos-body {
   background-color: #f8fafc;
 }
 
-.pos-cart-table tbody tr.table-active {
+/* Clean POS Active Row High-Contrast Selection (Keyboard Cursor in Cart / Lookups) */
+.pos-cart-table tbody tr.table-active,
+.pos-cart-table tbody tr.pos-row-selected,
+#product-search-results tr.table-active,
+#product-search-results tr.pos-row-selected,
+#held-transactions-list tr.table-active,
+#held-transactions-list tr.pos-row-selected {
   background-color: #dbeafe !important;
-  font-weight: 600;
+  color: #1e3a8a !important;
+  font-weight: 700;
+  outline: 2px solid #2563eb !important;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px #93c5fd !important;
+}
+
+.pos-cart-table tbody tr.table-active td,
+.pos-cart-table tbody tr.pos-row-selected td,
+#product-search-results tr.table-active td,
+#product-search-results tr.pos-row-selected td,
+#held-transactions-list tr.table-active td,
+#held-transactions-list tr.pos-row-selected td {
+  background-color: #dbeafe !important;
+  color: #1e3a8a !important;
+}
+
+.pos-cart-table tbody tr.table-active .text-muted,
+.pos-cart-table tbody tr.pos-row-selected .text-muted,
+.pos-cart-table tbody tr.table-active .text-primary,
+.pos-cart-table tbody tr.pos-row-selected .text-primary,
+.pos-cart-table tbody tr.table-active .text-success,
+.pos-cart-table tbody tr.pos-row-selected .text-success,
+#product-search-results tr.table-active .text-primary,
+#product-search-results tr.pos-row-selected .text-primary,
+#held-transactions-list tr.table-active .text-primary,
+#held-transactions-list tr.pos-row-selected .text-primary,
+#held-transactions-list tr.table-active .text-muted,
+#held-transactions-list tr.pos-row-selected .text-muted {
+  color: #1d4ed8 !important;
 }
 
 .pos-cart-table .num-cell {
@@ -182,6 +217,7 @@ body.pos-body {
   border: 1px solid var(--pos-border-color);
 }
 
+/* Color 1: Standard/Primary Action Chip (Crisp Light #f8fafc on #1e293b, border #475569) */
 .pos-hotkey-btn {
   background: #1e293b;
   color: #f8fafc;
@@ -205,15 +241,44 @@ body.pos-body {
   border-color: #38bdf8;
 }
 
+/* Color 2: Reserved Warning/Destructive Chip (#ef4444 - Void Line, Void Trans, Clear) */
+.pos-hotkey-btn.pos-hotkey-destructive {
+  background: #1e293b;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.pos-hotkey-btn.pos-hotkey-destructive:hover,
+.pos-hotkey-btn.pos-hotkey-destructive:focus-visible {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+/* On-screen destructive action styling consistency with Color 2 (#ef4444) */
+.btn-outline-danger {
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Color 3: Uniform Keycap Badges across all F-keys and shortcuts (Sky Blue #38bdf8) */
 .pos-key-badge {
   background: #0f172a;
-  color: var(--pos-accent-amber);
-  border: 1px solid #475569;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
   border-radius: 0.25rem;
-  padding: 0.1rem 0.25rem;
+  padding: 0.1rem 0.28rem;
   font-family: monospace;
   font-weight: 700;
   font-size: 0.725rem;
+  line-height: 1;
 }
 
 /* Tender Modal & Sukli (Change) Display */
@@ -684,10 +749,206 @@ body.pos-body {
   #printable-receipt, #printable-receipt * {
     visibility: visible;
   }
-  #printable-receipt {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
 }
+
+/* ==========================================================================
+   High-Visibility POS Spatial Keyboard Focus Indicator (.kb-focus)
+   Clean, Accessible Blue Highlighting (WCAG 4.5:1 Contrast)
+   ========================================================================== */
+.kb-focus {
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25) !important;
+  border-color: #2563eb !important;
+  transition: outline 0.08s ease-in-out, box-shadow 0.08s ease-in-out !important;
+}
+
+/* Modal dialogs, contents and backdrops must NEVER receive screen-covering focus rings or dark backgrounds */
+.modal,
+.modal.kb-focus,
+.modal-dialog,
+.modal-dialog.kb-focus,
+.modal-content,
+.modal-content.kb-focus,
+.modal-header,
+.modal-body,
+.modal-footer {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.modal-content {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+.pos-keyboard-select {
+  position: relative;
+}
+
+.pos-keyboard-select > .form-select {
+  padding-right: 2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-keyboard-select-menu {
+  position: absolute;
+  z-index: 1080;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin-top: 0.15rem;
+  padding: 0.25rem;
+  border: 1px solid #94a3b8;
+  border-radius: 0.375rem;
+  background: #fff;
+  box-shadow: 0 0.5rem 1rem rgba(15, 23, 42, 0.2);
+}
+
+.pos-keyboard-select-option {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #1e293b;
+  text-align: left;
+}
+
+.pos-keyboard-select-option:hover,
+.pos-keyboard-select-option.is-highlighted {
+  background: #dbeafe;
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+/* Form inputs & controls on keyboard focus: preserve clean white background & readable dark text */
+input.kb-focus,
+select.kb-focus,
+textarea.kb-focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #2563eb !important;
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Prominent barcode input keyboard focus */
+#barcode-input.kb-focus,
+.pos-barcode-input.kb-focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #2563eb !important;
+  outline: 3px solid #2563eb !important;
+  outline-offset: 1px !important;
+  box-shadow: 0 0 0 0.3rem rgba(37, 99, 235, 0.3) !important;
+}
+
+/* Buttons on keyboard focus: maintain original button color theme with clean ring */
+button.kb-focus,
+.btn.kb-focus,
+[role="button"].kb-focus {
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3) !important;
+}
+
+.btn-primary.kb-focus {
+  outline: 2.5px solid #1d4ed8 !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.4) !important;
+}
+
+.btn-success.kb-focus {
+  outline: 2.5px solid #059669 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.4) !important;
+}
+
+.btn-danger.kb-focus {
+  outline: 2.5px solid #dc2626 !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Dark navbar buttons keyboard focus */
+.navbar .btn.kb-focus {
+  outline: 2.5px solid #60a5fa !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.4) !important;
+}
+
+tr.kb-focus {
+  outline: 2px solid #2563eb !important;
+  outline-offset: -1px !important;
+}
+
+/* SUKI toggle & AR customer search focus styling */
+#suki-card-toggle:focus,
+#suki-card-toggle.kb-focus {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3) !important;
+}
+
+#ar-customer-search-filter:focus,
+#ar-customer-search-filter.kb-focus {
+  border-color: #2563eb !important;
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 1px !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Payment Method Control & Modal Options */
+#payment-method-control:focus,
+#payment-method-control.kb-focus {
+  outline: 2.5px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3) !important;
+}
+
+.payment-method-option {
+  cursor: pointer;
+  transition: all 0.12s ease;
+  border-left: 4px solid transparent !important;
+}
+
+.payment-method-option.is-highlighted,
+.payment-method-option.active,
+.payment-method-option:focus {
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+  border-left: 4px solid #2563eb !important;
+  font-weight: 700 !important;
+  outline: 2px solid #2563eb !important;
+  outline-offset: -2px !important;
+}
+
+/* Sales Receipt Modal Footer Centering */
+#receipt-modal .modal-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 0.75rem 0 !important;
+}
+
+#receipt-modal .modal-footer > * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+#receipt-modal .receipt-actions-group {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  width: auto !important;
+  margin: 0 auto !important;
+}
+
+
+

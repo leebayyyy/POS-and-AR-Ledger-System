@@ -158,11 +158,11 @@
 
   $customer = new ArCustomer();
   if ($operation === "updateCreditLimit") {
-    requireRoles(["Admin", "Accounts Receivable Staff"]);
+    requireRoles(["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"]);
   } else if (in_array($operation, ["insertCustomer", "updateCustomer", "deactivateCustomer", "restoreCustomer"], true)) {
-    requireRoles(["Admin"]);
+    requireRoles(["Admin", "Manager", "Supervisor"]);
   } else {
-    requireRoles(["Admin", "Accounts Receivable Staff", "Manager"]);
+    requireRoles(["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"]);
   }
   switch($operation){
     case "getAllCustomers":

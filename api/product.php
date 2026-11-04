@@ -17,7 +17,7 @@
 
     function getAllProducts(){
       include "connection-pdo.php";
-      $sql = "SELECT a.product_id, a.price, a.product_name, a.category_id, a.unit_of_measure_id, a.price_tier, a.wholesale_price, a.is_active,
+      $sql = "SELECT a.product_id, COALESCE(a.barcode, LPAD(a.product_id, 8, '0')) AS barcode, a.price, a.product_name, a.category_id, a.unit_of_measure_id, a.price_tier, a.wholesale_price, a.is_active,
                      b.category_name,
                      COALESCE(u.measure_name, '') AS measure_name
               FROM tblproducts a
@@ -44,7 +44,7 @@
     function getProduct($json){
       include "connection-pdo.php";
       $json = json_decode($json, true);
-      $sql = "SELECT a.product_id, a.price, a.product_name, a.category_id, a.unit_of_measure_id, a.price_tier, a.wholesale_price, a.is_active,
+      $sql = "SELECT a.product_id, COALESCE(a.barcode, LPAD(a.product_id, 8, '0')) AS barcode, a.price, a.product_name, a.category_id, a.unit_of_measure_id, a.price_tier, a.wholesale_price, a.is_active,
                      b.category_name,
                      COALESCE(u.measure_name, '') AS measure_name,
                      pp.promo_id, pr.promo_name, pr.discount_rate
@@ -66,8 +66,7 @@
       $json = json_decode($json, true);
       $price = ($json['price'] ?? '') === '' ? null : $json['price'];
       $sql = "INSERT INTO tblproducts(price, product_name, category_id, unit_of_measure_id, price_tier, wholesale_price, is_active)
-              VALUES(:price, :productName, :categoryId, :unitOfMeasureId, :priceTier, :wholesalePrice, 1)
-              RETURNING product_id";
+              VALUES(:price, :productName, :categoryId, :unitOfMeasureId, :priceTier, :wholesalePrice, 1)";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(":price", $price);
       $stmt->bindParam(":productName", $json['productName']);
@@ -77,7 +76,7 @@
       $stmt->bindValue(":priceTier", $priceTier);
       $stmt->bindValue(":wholesalePrice", ($json['wholesalePrice'] ?? '') === '' ? null : $json['wholesalePrice']);
       $stmt->execute();
-      $productId = (int)$stmt->fetchColumn();
+      $productId = (int)$conn->lastInsertId();
       $returnValue = 0;
       if($productId > 0){
         $returnValue = 1;
@@ -153,9 +152,9 @@
 
   $product = new Product();
   if (in_array($operation, ["insertProduct", "updateProduct", "deactivateProduct", "restoreProduct"], true)) {
-    requireRoles(["Admin", "Manager"]);
+    requireRoles(["Admin", "Manager", "Supervisor"]);
   } else {
-    requireRoles(["Admin", "Cashier", "Manager"]);
+    requireRoles(["Admin", "Cashier", "Manager", "Supervisor"]);
   }
   switch($operation){
     case "getAllUnitsOfMeasure":

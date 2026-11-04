@@ -1,4 +1,5 @@
-import { requirePageRole, addLogout, getSession, logoutUser, confirmLogout } from "./auth.js?v=9";
+import "./delete-as-backspace.js";
+import { requirePageRole, addLogout, getSession, logoutUser, confirmLogout } from "./auth.js?v=20261022";
 
 const page = window.location.pathname.split("/").pop() || "index.html";
 
@@ -7,19 +8,19 @@ if (page === "ar_transactions.html") {
 }
 
 const permissions = {
-  "index.html": ["Admin", "Accounts Receivable Staff", "Manager", "Cashier"],
-  "role.html": ["Admin"],
-  "user.html": ["Admin"],
-  "product_category.html": ["Admin"],
-  "product.html": ["Admin", "Manager"],
-  "pos_terminal.html": ["Admin", "Manager"],
-  "ar_customer_type.html": ["Admin", "Accounts Receivable Staff", "Manager"],
-  "ar_customer.html": ["Admin", "Accounts Receivable Staff", "Manager"],
-  "payment.html": ["Admin", "Accounts Receivable Staff", "Manager"],
-  "sales.html": ["Admin", "Cashier", "Manager"],
-  "reports.html": ["Admin", "Accounts Receivable Staff", "Manager"],
-  "settings.html": ["Admin", "Manager"],
-  "suki_card.html": ["Admin", "Manager"],
+  "index.html": ["Admin", "Accounts Receivable Staff", "Manager", "Cashier", "Supervisor"],
+  "role.html": ["Admin", "Manager", "Supervisor"],
+  "user.html": ["Admin", "Manager", "Supervisor"],
+  "product_category.html": ["Admin", "Manager", "Supervisor"],
+  "product.html": ["Admin", "Manager", "Supervisor"],
+  "pos_terminal.html": ["Admin", "Manager", "Supervisor"],
+  "ar_customer_type.html": ["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"],
+  "ar_customer.html": ["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"],
+  "payment.html": ["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"],
+  "sales.html": ["Admin", "Cashier", "Manager", "Supervisor"],
+  "reports.html": ["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"],
+  "settings.html": ["Admin", "Manager", "Supervisor"],
+  "suki_card.html": ["Admin", "Manager", "Supervisor"],
   "terminal_select.html": ["Cashier"],
 };
 
@@ -84,13 +85,11 @@ const user = await requirePageRole(permissions[page] || []);
 if (user) {
   const session = await getSession();
   if (user.role_name === "Cashier") {
-    if (page !== "terminal_select.html" && !session.selectedTerminalId) {
-      window.location.replace("terminal_select.html");
-    } else if (page === "terminal_select.html" && session.selectedTerminalId) {
-      window.location.replace("sales.html");
-    } else if (page === "index.html") {
+    if (page === "terminal_select.html" || page === "index.html") {
       window.location.replace("sales.html");
     }
+  } else if (page === "terminal_select.html") {
+    window.location.replace("index.html");
   }
   renderNavigation(user, session);
 }
@@ -223,6 +222,8 @@ function renderSidebarLayout(existingNav, currentUser, session) {
       ? "bg-primary text-white"
       : currentUser.role_name === "Manager"
       ? "bg-info text-dark"
+      : currentUser.role_name === "Supervisor"
+      ? "bg-warning text-dark"
       : "bg-success text-white";
   rolePill.className = `badge app-topbar-role-badge ${roleBadgeClass}`;
   rolePill.textContent = currentUser.role_name;
@@ -327,7 +328,9 @@ function renderCashierNavbar(nav, currentUser, session) {
   const termSpan = document.createElement("span");
   termSpan.className = "badge bg-secondary text-light px-2 py-1";
   termSpan.id = "cashier-nav-terminal";
-  termSpan.textContent = "Loading Terminal...";
+  termSpan.setAttribute("aria-readonly", "true");
+  termSpan.title = "Auto-assigned POS Terminal (Read-Only)";
+  termSpan.textContent = session?.selectedTerminalName || "Loading Terminal...";
 
   const userSpan = document.createElement("span");
   userSpan.className = "navbar-text text-light small fw-semibold me-2";
@@ -335,6 +338,7 @@ function renderCashierNavbar(nav, currentUser, session) {
 
   const logoutBtn = document.createElement("button");
   logoutBtn.type = "button";
+  logoutBtn.id = "btn-cashier-logout";
   logoutBtn.className = "btn btn-outline-danger btn-sm px-3";
   logoutBtn.textContent = "Logout";
   logoutBtn.addEventListener("click", async () => {

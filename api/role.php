@@ -85,7 +85,11 @@
   }
 
   $role = new Role();
-  requireRoles(["Admin"]);
+  if (in_array($operation, ["getAllRoles", "getRole"], true)) {
+    requireRoles(["Admin", "Manager", "Supervisor"]);
+  } else {
+    requireRoles(["Admin"]);
+  }
   switch($operation){
     case "getAllRoles":
       echo $role->getAllRoles();

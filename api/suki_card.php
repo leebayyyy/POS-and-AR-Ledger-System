@@ -22,7 +22,7 @@ function getNextSukiCardNumber($conn) {
 }
 
 if ($operation === 'getData') {
-  $user = requireRoles(["Admin", "Manager"]);
+  $user = requireRoles(["Admin", "Manager", "Supervisor"]);
   include "connection-pdo.php";
   echo json_encode([
     "cards" => $conn->query(
@@ -51,7 +51,7 @@ if ($operation === 'getData') {
   exit;
 }
 
-requireRoles(["Admin"]);
+requireRoles(["Admin", "Manager", "Supervisor"]);
 include "connection-pdo.php";
 
 if ($operation === 'insert') {

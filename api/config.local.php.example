@@ -1,0 +1,17 @@
+<?php
+/**
+ * Local XAMPP MySQL / MariaDB Database Configuration Example
+ * 
+ * To use this file, copy or rename it to `config.local.php` in the same directory (/api):
+ *   cp config.local.php.example config.local.php
+ * 
+ * Defaults below match a stock XAMPP install (root user, empty password).
+ */
+
+return [
+  'db_host'   => 'localhost',
+  'db_port'   => 3306,
+  'db_name'   => 'pos_ar_system',
+  'db_user'   => 'root',
+  'db_pass'   => ''               // XAMPP default: empty password for root
+];

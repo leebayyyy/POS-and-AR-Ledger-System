@@ -86,9 +86,9 @@
 
   $productCategory = new ProductCategory();
   if (in_array($operation, ["getAllProductCategories", "getProductCategory"], true)) {
-    requireRoles(["Admin", "Manager", "Cashier"]);
+    requireRoles(["Admin", "Manager", "Cashier", "Supervisor"]);
   } else {
-    requireRoles(["Admin"]);
+    requireRoles(["Admin", "Manager", "Supervisor"]);
   }
   switch($operation){
     case "getAllProductCategories":

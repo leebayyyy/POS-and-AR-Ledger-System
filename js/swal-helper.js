@@ -27,13 +27,14 @@ export const showSuccess = (message, title = "Success") => {
   }
 };
 
-export const showError = (message, title = "Error") => {
+export const showError = (message, title = "Error", options = {}) => {
   if (typeof Swal !== "undefined") {
     return Swal.fire({
       icon: "error",
       title,
       text: message,
-      confirmButtonColor: "#dc3545"
+      confirmButtonColor: "#dc3545",
+      ...options
     });
   }
 };

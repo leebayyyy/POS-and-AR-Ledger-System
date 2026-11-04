@@ -1,49 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Customer Types</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script type="module" src="./js/page-auth.js?v=21"></script>
-  <script type="module" src="./js/ar_customer_type.js?v=2"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous" />
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
-    crossorigin="anonymous"></script>
-</head>
-
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="index.html">POS &amp; AR Master Files</a>
-      <ul class="navbar-nav flex-row flex-wrap gap-2">
-        <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="role.html">Roles</a></li>
-        <li class="nav-item"><a class="nav-link" href="user.html">Users</a></li>
-        <li class="nav-item"><a class="nav-link" href="product_category.html">Product Categories</a></li>
-        <li class="nav-item"><a class="nav-link" href="product.html">Products</a></li>
-        <li class="nav-item"><a class="nav-link" href="pos_terminal.html">POS Terminals</a></li>
-        <li class="nav-item"><a class="nav-link active" href="ar_customer_type.html">Customer Types</a></li>
-        <li class="nav-item"><a class="nav-link" href="ar_customer.html">AR Customers</a></li>
-        <li class="nav-item"><a class="nav-link" href="payment.html">Payments</a></li>
-      </ul>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customer Types</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="./js/page-auth.js?v=20261021"></script>
+    <script type="module" src="./js/ar_customer_type.js?v=20261021"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">POS &amp; AR Master Files</a>
+        <ul class="navbar-nav flex-row flex-wrap gap-2">
+          <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="role.html">Roles</a></li>
+          <li class="nav-item"><a class="nav-link" href="user.html">Users</a></li>
+          <li class="nav-item"><a class="nav-link" href="product_category.html">Product Categories</a></li>
+          <li class="nav-item"><a class="nav-link" href="product.html">Products</a></li>
+          <li class="nav-item"><a class="nav-link" href="pos_terminal.html">POS Terminals</a></li>
+          <li class="nav-item"><a class="nav-link active" href="ar_customer_type.html">Customer Types</a></li>
+          <li class="nav-item"><a class="nav-link" href="ar_customer.html">AR Customers</a></li>
+          <li class="nav-item"><a class="nav-link" href="payment.html">Payments</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container mt-4">
+      <div id="header-div" class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 id="header-text" class="mb-0">CUSTOMER TYPES</h1>
+        <div class="d-flex align-items-center gap-2">
+          <input type="search" id="customer-type-search-filter" class="form-control form-control-sm" style="min-width: 260px;" placeholder="Search customer types by ID, name, or description..." aria-label="Search customer types" />
+          <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal" data-bs-target="#blank-modal">Add</button>
+        </div>
+      </div>
+      <div id="main-div"></div>
+      <div id="table-div" class="mt-3"></div>
+      <div id="footer-div"></div>
     </div>
-  </nav>
-  <div class="container mt-4">
-    <div id="header-div" class="d-flex justify-content-between align-items-center">
-      <h1 id="header-text">CUSTOMER TYPES</h1>
-      <button type="button" class="btn btn-primary" id="btn-add" data-bs-toggle="modal"
-        data-bs-target="#blank-modal">Add</button>
-    </div>
-    <div id="main-div"></div>
-    <div id="table-div" class="mt-3"></div>
-    <div id="footer-div"></div>
-  </div>
 
   <!-- BLANK MODAL -->
   <div class="modal fade" id="blank-modal" role="dialog" tabindex="-1" aria-hidden="true">
@@ -56,22 +61,18 @@
         <div class="modal-body" id="blank-modal-body">
           <form id="add-form">
             <div class="row g-2" id="blank-main-div" style="padding:5px;">
-              <div class="col-md-6"><input type="text" class="form-control" id="type_name" placeholder="Type Name"
-                  maxlength="100" required /></div>
-              <div class="col-md-6"><input type="text" class="form-control" id="description" placeholder="Description"
-                  maxlength="255" /></div>
-              <div class="col-md-6"><input type="number" class="form-control" id="days" placeholder="Days" min="0"
-                  step="1" /></div>
+              <div class="col-md-6"><input type="text" class="form-control" id="type_name" placeholder="Type Name" maxlength="100" required /></div>
+              <div class="col-md-6"><input type="text" class="form-control" id="description" placeholder="Description" maxlength="255" /></div>
+              <div class="col-md-6"><input type="number" class="form-control" id="days" placeholder="Days" min="0" step="1" /></div>
             </div>
           </form>
         </div>
         <div class="modal-footer" id="blank-modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary" id="btn-submit" form="add-form">Submit</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit" form="add-form">Submit</button>
         </div>
       </div>
     </div>
   </div>
-</body>
-
+  </body>
 </html>

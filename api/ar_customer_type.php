@@ -97,9 +97,9 @@
 
   $customerType = new ArCustomerType();
   if (in_array($operation, ["insertCustomerType", "updateCustomerType", "deleteCustomerType"], true)) {
-    requireRoles(["Admin"]);
+    requireRoles(["Admin", "Manager", "Supervisor"]);
   } else {
-    requireRoles(["Admin", "Accounts Receivable Staff", "Manager"]);
+    requireRoles(["Admin", "Accounts Receivable Staff", "Manager", "Supervisor"]);
   }
   switch($operation){
     case "getAllCustomerTypes":

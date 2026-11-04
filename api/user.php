@@ -22,8 +22,8 @@
         return false;
       }
       $roleConstraint = $allowExistingAdminRole
-        ? "AND role_name IN ('Cashier', 'Accounts Receivable Staff', 'Manager', 'Admin')"
-        : "AND role_name IN ('Cashier', 'Accounts Receivable Staff', 'Manager')";
+        ? "AND role_name IN ('Cashier', 'Accounts Receivable Staff', 'Manager', 'Admin', 'Supervisor')"
+        : "AND role_name IN ('Cashier', 'Accounts Receivable Staff', 'Manager', 'Supervisor')";
       $stmt = $conn->prepare("SELECT role_name FROM tblroles WHERE role_id=:roleId {$roleConstraint}");
       $stmt->execute([":roleId"=>$roleId]);
       $roleName = $stmt->fetchColumn();
@@ -42,7 +42,7 @@
           if ((!is_string($data[$field]) && !is_int($data[$field])) ||
               !preg_match('/^[1-9]\d*$/', (string)$data[$field])) {
             http_response_code(422);
-            echo json_encode(["message" => "Choose Cashier, Accounts Receivable Staff, or Manager."]);
+            echo json_encode(["message" => "Choose Cashier, Accounts Receivable Staff, Supervisor, or Manager."]);
             return false;
           }
         } elseif (!is_string($data[$field]) || trim($data[$field]) === "") {
@@ -89,7 +89,7 @@
         (int)$existingRoleId === (int)$data['roleId'];
       if (!$this->validEmployeeRole($data['roleId'], $allowExistingAdminRole)) {
         http_response_code(422);
-        echo json_encode(["message" => "Choose Cashier, Accounts Receivable Staff, or Manager."]);
+        echo json_encode(["message" => "Choose Cashier, Accounts Receivable Staff, Supervisor, or Manager."]);
         return false;
       }
       return true;
@@ -97,9 +97,12 @@
 
     function getAllUsers(){
       include "connection-pdo.php";
-      $sql = "SELECT a.user_id, a.username, a.first_name, a.last_name, a.role_id, a.email, a.phone, a.is_active, b.role_name
-              FROM tblusers a INNER JOIN tblroles b
-              ON a.role_id = b.role_id
+      $sql = "SELECT a.user_id, a.username, a.first_name, a.last_name, a.role_id, a.email, a.phone, a.is_active,
+                     a.assigned_terminal_id, t.terminal_name AS assigned_terminal_name,
+                     b.role_name
+              FROM tblusers a
+              INNER JOIN tblroles b ON a.role_id = b.role_id
+              LEFT JOIN tblpos_terminals t ON t.pos_terminal_id = a.assigned_terminal_id
               ORDER BY a.last_name, a.first_name";
       $stmt = $conn->prepare($sql);
       $stmt->execute();
@@ -110,9 +113,12 @@
     function getUser($json){
       include "connection-pdo.php";
       $json = json_decode($json, true);
-      $sql = "SELECT a.user_id, a.username, a.first_name, a.last_name, a.role_id, a.email, a.phone, a.is_active, b.role_name
-              FROM tblusers a INNER JOIN tblroles b
-              ON a.role_id = b.role_id
+      $sql = "SELECT a.user_id, a.username, a.first_name, a.last_name, a.role_id, a.email, a.phone, a.is_active,
+                     a.assigned_terminal_id, t.terminal_name AS assigned_terminal_name,
+                     b.role_name
+              FROM tblusers a
+              INNER JOIN tblroles b ON a.role_id = b.role_id
+              LEFT JOIN tblpos_terminals t ON t.pos_terminal_id = a.assigned_terminal_id
               WHERE a.user_id = :userId";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(":userId", $json['userId']);
@@ -143,8 +149,11 @@
           return "";
         }
       }
-      $sql = "INSERT INTO tblusers(username, first_name, last_name, role_id, email, phone, password_hash, is_active)
-              VALUES(:username, :firstName, :lastName, :roleId, :email, :phone, :passwordHash, 1)";
+      $assignedTerminalId = !empty($json['assignedTerminalId']) ? filter_var($json['assignedTerminalId'], FILTER_VALIDATE_INT) : null;
+      if (!$assignedTerminalId) $assignedTerminalId = null;
+
+      $sql = "INSERT INTO tblusers(username, first_name, last_name, role_id, email, phone, password_hash, assigned_terminal_id, is_active)
+              VALUES(:username, :firstName, :lastName, :roleId, :email, :phone, :passwordHash, :assignedTerminalId, 1)";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(":username", $json['username']);
       $stmt->bindParam(":firstName", $json['firstName']);
@@ -156,6 +165,7 @@
       $stmt->bindParam(":phone", $phone);
       $passwordHash = password_hash($json['password'], PASSWORD_DEFAULT);
       $stmt->bindParam(":passwordHash", $passwordHash);
+      $stmt->bindValue(":assignedTerminalId", $assignedTerminalId, $assignedTerminalId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
       $stmt->execute();
       $returnValue = 0;
       if($stmt->rowCount() > 0){
@@ -204,9 +214,12 @@
         http_response_code(403);
         return json_encode(["message" => "You cannot change your own role assignment."]);
       }
+      $assignedTerminalId = !empty($json['assignedTerminalId']) ? filter_var($json['assignedTerminalId'], FILTER_VALIDATE_INT) : null;
+      if (!$assignedTerminalId) $assignedTerminalId = null;
+
       $passwordClause = empty($json['password']) ? "" : ", password_hash=:passwordHash";
       $sql = "UPDATE tblusers SET username=:username, first_name=:firstName, last_name=:lastName,
-                role_id=:roleId, email=:email, phone=:phone" . $passwordClause . "
+                role_id=:roleId, email=:email, phone=:phone, assigned_terminal_id=:assignedTerminalId" . $passwordClause . "
               WHERE user_id=:userId";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(":username", $json['username']);
@@ -217,6 +230,7 @@
       $phone = $json['phone'] ?? null;
       $stmt->bindParam(":email", $email);
       $stmt->bindParam(":phone", $phone);
+      $stmt->bindValue(":assignedTerminalId", $assignedTerminalId, $assignedTerminalId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
       if (!empty($json['password'])) {
         $passwordHash = password_hash($json['password'], PASSWORD_DEFAULT);
         $stmt->bindParam(":passwordHash", $passwordHash);
@@ -227,7 +241,6 @@
       return json_encode($returnValue);
     }
 
-    //soft delete - users are referenced by transaction history, so they are deactivated, not removed
     function deactivateUser($json){
       include "connection-pdo.php";
       $json = $this->decodeUserData($json);
@@ -265,7 +278,6 @@
     }
   }
 
-  //submitted by the client - operation and json
   if ($_SERVER['REQUEST_METHOD'] == 'GET'){
     $operation = $_GET['operation'];
     $json = isset($_GET['json']) ? $_GET['json'] : "";
@@ -275,7 +287,11 @@
   }
 
   $user = new User();
-  requireRoles(["Admin"]);
+  if (in_array($operation, ["getAllUsers", "getUser"], true)) {
+    requireRoles(["Admin", "Manager", "Supervisor"]);
+  } else {
+    requireRoles(["Admin"]);
+  }
   switch($operation){
     case "getAllUsers":
       echo $user->getAllUsers();

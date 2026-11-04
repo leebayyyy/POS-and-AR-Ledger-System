@@ -2,7 +2,7 @@ import { updateModal } from "./modules/product_category-update.js";
 import { deleteModal } from "./modules/product_category-delete.js";
 import { showToast, showError } from "./swal-helper.js";
 
-const baseApiUrl = "/api";
+const baseApiUrl = "api";
 sessionStorage.setItem("baseAPIUrl", baseApiUrl);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       <button type="submit" class="btn btn-primary" id="btn-submit" form="add-form">Submit</button>`;
   });
+  document.getElementById("category-search-filter")?.addEventListener("input", () => {
+    filterAndRenderCategories();
+  });
   displayRecords();
   document.getElementById("add-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -22,12 +25,29 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+let allCategoriesCache = [];
+
+const filterAndRenderCategories = () => {
+  const q = (document.getElementById("category-search-filter")?.value || "").toLowerCase().trim();
+  if (!q) {
+    displayRecordsTable(allCategoriesCache);
+    return;
+  }
+  const filtered = allCategoriesCache.filter((c) =>
+    String(c.category_id || "").toLowerCase().includes(q) ||
+    String(c.category_name || "").toLowerCase().includes(q) ||
+    String(c.description || "").toLowerCase().includes(q)
+  );
+  displayRecordsTable(filtered);
+};
+
 const displayRecords = async () => {
   const response = await axios.get(`${baseApiUrl}/product_category.php`, {
     params: { operation: "getAllProductCategories" },
   });
   if (response.status == 200) {
-    displayRecordsTable(response.data);
+    allCategoriesCache = Array.isArray(response.data) ? response.data : [];
+    filterAndRenderCategories();
   } else {
     showError("Unable to load product categories.");
   }

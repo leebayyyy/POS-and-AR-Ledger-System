@@ -2,7 +2,7 @@ import { updateModal } from "./modules/ar_customer_type-update.js";
 import { deleteModal } from "./modules/ar_customer_type-delete.js";
 import { showToast, showError } from "./swal-helper.js";
 
-const baseApiUrl = "/api";
+const baseApiUrl = "api";
 sessionStorage.setItem("baseAPIUrl", baseApiUrl);
 
 let canManageCustomerTypes = false;
@@ -24,11 +24,30 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("table-div").innerHTML =
         '<div class="alert alert-danger">Unable to load customer type data.</div>';
     });
+  document.getElementById("customer-type-search-filter")?.addEventListener("input", () => {
+    filterAndRenderCustomerTypes();
+  });
   document.getElementById("add-form").addEventListener("submit", (event) => {
     event.preventDefault();
     insertArCustomerType();
   });
 });
+
+let allCustomerTypesCache = [];
+
+const filterAndRenderCustomerTypes = () => {
+  const q = (document.getElementById("customer-type-search-filter")?.value || "").toLowerCase().trim();
+  if (!q) {
+    displayRecordsTable(allCustomerTypesCache);
+    return;
+  }
+  const filtered = allCustomerTypesCache.filter((t) =>
+    String(t.customer_type_id || "").toLowerCase().includes(q) ||
+    String(t.type_name || "").toLowerCase().includes(q) ||
+    String(t.description || "").toLowerCase().includes(q)
+  );
+  displayRecordsTable(filtered);
+};
 
 const loadPermissions = async () => {
   const response = await axios.get(`${baseApiUrl}/auth.php`, {
@@ -44,7 +63,8 @@ const displayRecords = async () => {
     params: { operation: "getAllCustomerTypes" },
   });
   if (response.status == 200) {
-    displayRecordsTable(response.data);
+    allCustomerTypesCache = Array.isArray(response.data) ? response.data : [];
+    filterAndRenderCustomerTypes();
   } else {
     showError("Unable to load customer types.");
   }

@@ -1,9 +1,12 @@
-const reportsUrl = "/api/reports.php";
+const reportsUrl = "api/reports.php";
 
 document.addEventListener("DOMContentLoaded", () => {
   const dateInput = document.getElementById("report-date");
   dateInput.value = localDateString(new Date());
   dateInput.addEventListener("change", loadReport);
+  document.getElementById("report-search-filter")?.addEventListener("input", () => {
+    if (cachedReportData) renderReport(cachedReportData);
+  });
   loadReport();
 });
 
@@ -46,6 +49,13 @@ const renderReport = (data) => {
   if (!data) return;
   const dateLabel = new Date(`${data.date}T00:00:00`).toLocaleDateString();
   document.getElementById("report-date-label").textContent = dateLabel;
+  const ab = data.agingBuckets || {
+    current: { count: 0, balance: 0 },
+    days_1_30: { count: 0, balance: 0 },
+    days_31_60: { count: 0, balance: 0 },
+    days_60_plus: { count: 0, balance: 0 }
+  };
+
   document.getElementById("report-cards").innerHTML = `
     <div class="col-md-4 col-lg-4">
       <div class="card p-3 h-100 shadow-sm border-0 report-card">
@@ -103,11 +113,16 @@ const renderReport = (data) => {
       </div>
     </div>`;
 
-  const sortedSales = [...(data.dailySales || [])].sort((a, b) => {
-    const idA = Number(a.sale_id || 0);
-    const idB = Number(b.sale_id || 0);
-    return reportSalesSortDir === "desc" ? idB - idA : idA - idB;
-  });
+  const q = (document.getElementById("report-search-filter")?.value || "").toLowerCase().trim();
+  const matchRow = (...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
+
+  const sortedSales = [...(data.dailySales || [])]
+    .filter((s) => matchRow(s.sale_id, s.sale_type, s.cashier, s.customer_name, s.terminal_name, s.payment_method))
+    .sort((a, b) => {
+      const idA = Number(a.sale_id || 0);
+      const idB = Number(b.sale_id || 0);
+      return reportSalesSortDir === "desc" ? idB - idA : idA - idB;
+    });
 
   const salesRows = sortedSales.map((sale) => `
     <tr>
@@ -127,11 +142,21 @@ const renderReport = (data) => {
       <td class="text-end fw-bold">₱${Number(terminal.sales_total || 0).toFixed(2)}</td>
     </tr>`).join("");
 
-  const sortedInvoices = [...(data.invoices || [])].sort((a, b) => {
-    const idA = Number(a.ar_invoice_id || 0);
-    const idB = Number(b.ar_invoice_id || 0);
-    return reportInvoiceSortDir === "desc" ? idB - idA : idA - idB;
-  });
+  const sortedInvoices = [...(data.invoices || [])]
+    .filter((inv) => matchRow(inv.invoice_number, inv.ar_invoice_id, inv.customer_name, inv.status, inv.collection_status, inv.aging_bucket))
+    .sort((a, b) => {
+      const idA = Number(a.ar_invoice_id || 0);
+      const idB = Number(b.ar_invoice_id || 0);
+      return reportInvoiceSortDir === "desc" ? idB - idA : idA - idB;
+    });
+
+  const agingBadgeHtml = (bucket) => {
+    if (bucket === "Current") return '<span class="badge bg-primary">Current</span>';
+    if (bucket === "1-30 Days") return '<span class="badge bg-info text-dark">1–30 Days</span>';
+    if (bucket === "31-60 Days") return '<span class="badge bg-warning text-dark">31–60 Days</span>';
+    if (bucket === "60+ Days") return '<span class="badge bg-danger">60+ Days</span>';
+    return `<span class="badge bg-secondary">${escapeHtml(bucket || "Current")}</span>`;
+  };
 
   const invoiceRows = sortedInvoices.map((invoice) => `
     <tr>
@@ -141,7 +166,7 @@ const renderReport = (data) => {
       <td class="font-monospace">${escapeHtml(invoice.due_date || "")}</td>
       <td class="text-end">₱${Number(invoice.invoice_amount || 0).toFixed(2)}</td>
       <td class="text-end fw-bold">₱${Number(invoice.balance || 0).toFixed(2)}</td>
-      <td><span class="badge bg-secondary">${escapeHtml(invoice.status)}</span></td>
+      <td>${agingBadgeHtml(invoice.aging_bucket)}</td>
       <td>${invoice.collection_status === "Overdue"
         ? `<span class="badge bg-danger">Overdue — ${invoice.days_overdue} days</span>`
         : invoice.collection_status === "Due today"
@@ -149,13 +174,16 @@ const renderReport = (data) => {
           : '<span class="badge bg-primary">Current</span>'}</td>
     </tr>`).join("");
 
-  const customerRows = (data.customerBalances || []).map((customer) => `
+  const customerRows = (data.customerBalances || [])
+    .filter((c) => matchRow(c.customer_name, c.ar_customer_id))
+    .map((customer) => `
     <tr>
       <td class="fw-semibold">${escapeHtml(customer.customer_name)}</td>
       <td class="text-center">${customer.open_invoice_count}</td>
-      <td class="text-end">₱${Number(customer.invoice_balance).toFixed(2)}</td>
-      <td class="text-center">${customer.pending_sale_count}</td>
-      <td class="text-end">₱${Number(customer.pending_balance).toFixed(2)}</td>
+      <td class="text-end font-monospace">₱${Number(customer.current_balance || 0).toFixed(2)}</td>
+      <td class="text-end font-monospace">₱${Number(customer.days_1_30_balance || 0).toFixed(2)}</td>
+      <td class="text-end font-monospace">₱${Number(customer.days_31_60_balance || 0).toFixed(2)}</td>
+      <td class="text-end font-monospace text-danger fw-bold">₱${Number(customer.days_60_plus_balance || 0).toFixed(2)}</td>
       <td class="text-end fw-bold">₱${Number(customer.total_balance).toFixed(2)}</td>
       <td class="text-end">₱${Number(customer.credit_limit).toFixed(2)}</td>
       <td class="text-end text-success fw-semibold">₱${Number(customer.available_credit).toFixed(2)}</td>
@@ -173,7 +201,62 @@ const renderReport = (data) => {
       <td class="text-end">₱${Number(payment.invoice_balance || 0).toFixed(2)}</td>
     </tr>`).join("");
 
+  const ledgerRows = (data.ledgerEntries || [])
+    .filter((e) => matchRow(e.reference_no, e.customer_name, e.invoice_number, e.entry_type, e.reason))
+    .map((e) => {
+      const isCredit = e.entry_type === "credit_memo";
+      const sign = isCredit ? "-" : "+";
+      const cls = isCredit ? "text-success" : "text-danger";
+      return `
+        <tr>
+          <td class="font-monospace fw-bold">#${e.entry_id}</td>
+          <td class="font-monospace">${escapeHtml(e.reference_no)}</td>
+          <td><span class="badge ${isCredit ? "bg-success" : "bg-warning text-dark"}">${escapeHtml(e.entry_type)}</span></td>
+          <td>${escapeHtml(e.customer_name)}</td>
+          <td class="font-monospace">${escapeHtml(e.invoice_number || "—")}</td>
+          <td>${escapeHtml(e.reason)}</td>
+          <td class="text-end font-monospace fw-bold ${cls}">${sign}₱${Number(e.amount || 0).toFixed(2)}</td>
+          <td class="text-end font-monospace">₱${Number(e.balance_after || 0).toFixed(2)}</td>
+          <td>${escapeHtml(e.supervisor_name || e.created_by_name || "Supervisor")}</td>
+        </tr>`;
+    }).join("");
+
   document.getElementById("report-content").innerHTML = `
+    <!-- WP-5 5A.3: AR Aging Buckets Schedule (Current, 1–30, 31–60, 60+) -->
+    <section class="card shadow-sm border-0 p-3 mb-4" id="report-aging-buckets-section">
+      <h2 class="h5 fw-bold text-dark pb-2 mb-3 border-bottom">AR Aging Schedule (Current, 1–30, 31–60, 60+ Days)</h2>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="small fw-bold text-uppercase text-muted">Current (Not Overdue)</div>
+            <div class="h5 fw-bold text-primary font-monospace mb-1" id="rep-aging-current-bal">₱${Number(ab.current?.balance || 0).toFixed(2)}</div>
+            <div class="small text-muted"><strong id="rep-aging-current-cnt">${Number(ab.current?.count || 0)}</strong> invoice(s)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="small fw-bold text-uppercase text-muted">1–30 Days Overdue</div>
+            <div class="h5 fw-bold text-info-emphasis font-monospace mb-1" id="rep-aging-1-30-bal">₱${Number(ab.days_1_30?.balance || 0).toFixed(2)}</div>
+            <div class="small text-muted"><strong id="rep-aging-1-30-cnt">${Number(ab.days_1_30?.count || 0)}</strong> invoice(s)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="small fw-bold text-uppercase text-muted">31–60 Days Overdue</div>
+            <div class="h5 fw-bold text-warning-emphasis font-monospace mb-1" id="rep-aging-31-60-bal">₱${Number(ab.days_31_60?.balance || 0).toFixed(2)}</div>
+            <div class="small text-muted"><strong id="rep-aging-31-60-cnt">${Number(ab.days_31_60?.count || 0)}</strong> invoice(s)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border border-danger rounded bg-danger-subtle h-100">
+            <div class="small fw-bold text-uppercase text-danger">60+ Days Overdue</div>
+            <div class="h5 fw-bold text-danger font-monospace mb-1" id="rep-aging-60-plus-bal">₱${Number(ab.days_60_plus?.balance || 0).toFixed(2)}</div>
+            <div class="small text-muted"><strong id="rep-aging-60-plus-cnt">${Number(ab.days_60_plus?.count || 0)}</strong> invoice(s)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card shadow-sm border-0 p-3 mb-4">
       <h2 class="h5 fw-bold text-dark pb-2 mb-3 border-bottom">Sales by Cashier — ${dateLabel}</h2>
       <div class="table-responsive">
@@ -207,11 +290,11 @@ const renderReport = (data) => {
     </section>
 
     <section class="card shadow-sm border-0 p-3 mb-4">
-      <h2 class="h5 fw-bold text-dark pb-2 mb-3 border-bottom">Customer Credit Exposure</h2>
+      <h2 class="h5 fw-bold text-dark pb-2 mb-3 border-bottom">Customer Credit Exposure &amp; Aging Breakdown</h2>
       <div class="table-responsive">
         <table class="table table-hover table-striped align-middle mb-0">
-          <thead><tr><th>Customer</th><th class="text-center">Open Invoices</th><th class="text-end">Invoice Balance</th><th class="text-center">Pending Sales</th><th class="text-end">Pending Total</th><th class="text-end">Total Outstanding</th><th class="text-end">Credit Limit</th><th class="text-end">Available Credit</th></tr></thead>
-          <tbody>${customerRows || '<tr><td colspan="8" class="text-center text-muted py-3">No outstanding balances or approved credit limits.</td></tr>'}</tbody>
+          <thead><tr><th>Customer</th><th class="text-center">Open Inv</th><th class="text-end">Current</th><th class="text-end">1–30 Days</th><th class="text-end">31–60 Days</th><th class="text-end">60+ Days</th><th class="text-end">Total Balance</th><th class="text-end">Credit Limit</th><th class="text-end">Available Credit</th></tr></thead>
+          <tbody>${customerRows || '<tr><td colspan="9" class="text-center text-muted py-3">No outstanding balances or approved credit limits.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
@@ -230,11 +313,21 @@ const renderReport = (data) => {
               <th>Due Date</th>
               <th class="text-end">Total</th>
               <th class="text-end">Balance</th>
-              <th>Invoice Status</th>
+              <th>Aging Bucket</th>
               <th>Collection Status</th>
             </tr>
           </thead>
           <tbody>${invoiceRows || '<tr><td colspan="8" class="text-center text-muted py-3">No outstanding invoices.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card shadow-sm border-0 p-3 mb-4">
+      <h2 class="h5 fw-bold text-dark pb-2 mb-3 border-bottom">Credit / Debit Memos &amp; AR Ledger Adjustments</h2>
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead><tr><th>Entry #</th><th>Reference</th><th>Type</th><th>Customer</th><th>Invoice</th><th>Reason</th><th class="text-end">Adjustment</th><th class="text-end">Balance After</th><th>Authorized By</th></tr></thead>
+          <tbody>${ledgerRows || '<tr><td colspan="9" class="text-center text-muted py-3">No credit/debit memos or ledger adjustments recorded.</td></tr>'}</tbody>
         </table>
       </div>
     </section>

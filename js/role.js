@@ -2,7 +2,7 @@ import { updateModal } from "./modules/role-update.js";
 import { deleteModal } from "./modules/role-delete.js";
 import { showToast, showError } from "./swal-helper.js";
 
-const baseApiUrl = "/api";
+const baseApiUrl = "api";
 sessionStorage.setItem("baseAPIUrl", baseApiUrl);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       <button type="submit" class="btn btn-primary" id="btn-submit" form="add-form">Submit</button>`;
   });
+  document.getElementById("role-search-filter")?.addEventListener("input", () => {
+    filterAndRenderRoles();
+  });
   displayRecords();
   document.getElementById("add-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -22,12 +25,29 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+let allRolesCache = [];
+
+const filterAndRenderRoles = () => {
+  const q = (document.getElementById("role-search-filter")?.value || "").toLowerCase().trim();
+  if (!q) {
+    displayRecordsTable(allRolesCache);
+    return;
+  }
+  const filtered = allRolesCache.filter((r) =>
+    String(r.role_id || "").toLowerCase().includes(q) ||
+    String(r.role_name || "").toLowerCase().includes(q) ||
+    String(r.description || "").toLowerCase().includes(q)
+  );
+  displayRecordsTable(filtered);
+};
+
 const displayRecords = async () => {
   const response = await axios.get(`${baseApiUrl}/role.php`, {
     params: { operation: "getAllRoles" },
   });
   if (response.status == 200) {
-    displayRecordsTable(response.data);
+    allRolesCache = Array.isArray(response.data) ? response.data : [];
+    filterAndRenderRoles();
   } else {
     showError("Unable to load roles.");
   }
