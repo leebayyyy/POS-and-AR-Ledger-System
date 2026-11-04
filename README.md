@@ -1,4 +1,4 @@
-# POS & AR Master Files — Professor-style rebuild
+# POS & AR Master Files
 
 This is your original master-file scope (Roles, Users, Product Categories,
 Products, POS Terminals, AR Customer Types, AR Customers)
