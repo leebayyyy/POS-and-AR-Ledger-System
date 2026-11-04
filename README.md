@@ -46,6 +46,7 @@ The AR handoff migration associates existing credit sales with their customers
 and adds invoice due dates before the updated Sales and AR Transactions pages are used.
 The customer credit-limit migration adds a zero-default limit; AR Staff or Admin
 must assign an approved limit before a customer can make a credit purchase.
+
 The sales-promotion migration records the promotion and promotion discount used
 on each new sale line for receipt and reporting audit.
 After login, each Cashier selects the POS terminal in use. That selection is
@@ -53,6 +54,7 @@ stored in the login session and applies to all sales until logout; the Admin
 does not assign terminals to employees. Managers can review daily transaction
 counts and sales totals by terminal. The terminal session-selection migration
 removes the obsolete assignment table from existing installations.
+
 The sales payment-method migration adds an optional method reference to historical
 sales and records the selected active method on new POS cash sales. AR credit
 sales remain payable through the Accounts Receivable payment workflow. Admin
@@ -62,6 +64,7 @@ Managers can monitor methods in the sales and payment reports.
 Admin manages employee accounts and assigns the Cashier, Accounts Receivable
 Staff, or Manager role. User-management API mutations are Admin-only; employees
 cannot change their own role assignment.
+
 Authenticated pages render a shared, role-filtered navigation menu with a
 consistent link order and active-page indicator. The navbar stays pinned to the
 top; wider menus scroll horizontally instead of wrapping links out of view, and
